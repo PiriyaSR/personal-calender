@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f6f5c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>My Planner</title>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--ink:#1d2421;--mute:#6b7772;--line:#e1e5e0;--accent:#1f6f5c;--accent2:#e8f3ef;--warn:#b4531a}
+@media (prefers-color-scheme:dark){:root{--bg:#141817;--card:#1c2220;--ink:#e8eeea;--mute:#8fa09a;--line:#2d3633;--accent:#4fb89c;--accent2:#1f3430;--warn:#e08a4f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top))}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.grow{flex:1}
+h1{font-size:17px;margin:0}
+.tabs{display:flex;gap:4px;background:var(--bg);padding:3px;border-radius:10px}
+.tabs button{border:0;background:none;color:var(--mute);padding:6px 14px;border-radius:8px;font:inherit;font-weight:600}
+.tabs button.on{background:var(--accent);color:#fff}
+button{font:inherit;color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--card);padding:6px 12px;border-radius:8px;cursor:pointer}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.del{color:var(--warn)}
+#title{font-weight:700;font-size:16px;min-width:140px;text-align:center}
+main{padding:12px;max-width:1200px;margin:0 auto}
+.banner{background:var(--accent2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:13px}
+.banner.warn{border-color:var(--warn)}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{font-size:12px;font-weight:700;color:var(--mute);text-align:center;padding:2px}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:8px;min-height:84px;padding:4px;overflow:hidden;cursor:pointer}
+.cell.out{opacity:.45}
+.cell.today{border:2px solid var(--accent)}
+.cell .n{font-size:12px;font-weight:700}
+.chip{display:block;font-size:11px;border-radius:4px;padding:1px 4px;margin-top:2px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cnt{font-size:11px;color:var(--mute);margin-top:2px}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+.card.today{border:2px solid var(--accent)}
+.card h3{margin:0 0 6px;font-size:14px;cursor:pointer}
+.ev{display:flex;gap:6px;align-items:center;padding:5px 7px;border-radius:6px;margin:3px 0;color:#fff;font-size:13px;cursor:pointer}
+.ev small{opacity:.9}
+.todo{display:flex;gap:8px;align-items:flex-start;padding:3px 0}
+.todo.done span{text-decoration:line-through;color:var(--mute)}
+.todo input{margin-top:3px;width:18px;height:18px;accent-color:var(--accent)}
+.todo .x{margin-left:auto;border:0;background:none;color:var(--mute);cursor:pointer}
+.add{width:100%;border:1px dashed var(--line);background:none;border-radius:6px;padding:6px;margin-top:4px;color:var(--ink);font:inherit}
+textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;padding:8px;resize:vertical}
+.sec{margin-top:14px}
+.sec>h2{font-size:14px;margin:0 0 6px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);width:min(420px,94vw);padding:16px}
+dialog::backdrop{background:#0006}
+label{display:block;font-size:12px;color:var(--mute);margin-top:10px}
+input[type=text],input[type=date],input[type=time],select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:640px){.cell{min-height:64px}.chip{font-size:10px}#title{min-width:0;font-size:14px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1 class="grow">My Planner</h1>
+    <button class="btn" data-a="menu">Backup</button>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <div class="tabs" id="tabs">
+      <button data-a="view" data-v="month">Month</button>
+      <button data-a="view" data-v="week">Week</button>
+      <button data-a="view" data-v="day">Day</button>
+    </div>
+    <span class="grow"></span>
+    <button class="btn" data-a="prev">&lsaquo;</button>
+    <div id="title"></div>
+    <button class="btn" data-a="next">&rsaquo;</button>
+    <button class="btn" data-a="today">Today</button>
+  </div>
+</header>
+<main id="app"></main>
+
+<dialog id="evDlg">
+  <form method="dialog" id="evForm">
+    <b id="evHead">Event</b>
+    <label>Title</label><input type="text" id="evTitle" required>
+    <label>Date</label><input type="date" id="evDate" required>
+    <div class="two">
+      <div><label>Start</label><input type="time" id="evStart"></div>
+      <div><label>End</label><input type="time" id="evEnd"></div>
+    </div>
+    <div class="two">
+      <div><label>Category</label><select id="evCat"></select></div>
+      <div><label>Reminder</label>
+        <select id="evRem"><option value="">None</option><option value="0">At start</option><option value="10">10 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option></select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button type="button" class="btn del" id="evDel">Delete</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="evCancel">Cancel</button>
+      <button class="btn pri" id="evSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="bkDlg">
+  <b>Backup &amp; settings</b>
+  <p id="bkInfo" style="color:var(--mute);font-size:13px"></p>
+  <div class="row">
+    <button class="btn pri" data-a="export">Download backup</button>
+    <button class="btn" data-a="import">Restore from file</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button class="btn" data-a="notif">Enable reminders</button>
+  </div>
+  <p style="color:var(--mute);font-size:12px">Your data is stored on this device. Download a backup regularly until cloud sync is added.</p>
+  <div class="row"><span class="grow"></span><button class="btn" data-a="closeBk">Close</button></div>
+  <input type="file" id="file" accept="application/json" hidden>
+</dialog>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const ds=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const monday=d=>{const x=new Date(d);x.setDate(x.getDate()-((x.getDay()+6)%7));x.setHours(0,0,0,0);return x};
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const CATS={General:'#1f6f5c',Study:'#3b6fb6',Exam:'#b4531a',Work:'#7a4fb0',Personal:'#b0457a'};
+
+const KEY='planner.v1';
+function fresh(){return{v:1,events:[],todos:[],notes:{},meta:{}}}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?x:fresh()}catch(e){return fresh()}}
+let db=load();
+function save(){db.meta.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){alert('Could not save: storage full or blocked.')}}
+const getNote=k=>db.notes[k]||'';
+const setNote=(k,v)=>{if(v)db.notes[k]=v;else delete db.notes[k];save()};
+
+let view=localStorage.getItem('planner.view')||'month';
+let cur=new Date();cur.setHours(0,0,0,0);
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+
+const evsOn=d=>db.events.filter(e=>e.date===d).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+const todosOn=d=>db.todos.filter(t=>t.date===d).sort((a,b)=>a.done-b.done);
+
+function evHtml(e){
+  const t=e.start?`<small>${e.start}${e.end?'–'+e.end:''}</small>`:'';
+  return `<div class="ev" style="background:${CATS[e.cat]||CATS.General}" data-a="editEv" data-id="${e.id}">${t}<span>${esc(e.title)}</span>${e.rem!==''&&e.rem!=null?' 🔔':''}</div>`;
+}
+function todoHtml(t){
+  return `<div class="todo ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} data-a="tog" data-id="${t.id}"><span>${esc(t.text)}</span><button class="x" data-a="delTodo" data-id="${t.id}" aria-label="Delete">✕</button></div>`;
+}
+function todoBlock(d){
+  return todosOn(d).map(todoHtml).join('')+`<input class="add" data-add="${d}" placeholder="+ add to-do, press Enter">`;
+}
+function noteBox(k,ph){return `<textarea data-note="${k}" placeholder="${ph}">${esc(getNote(k))}</textarea>`}
+
+function renderMonth(){
+  const y=cur.getFullYear(),m=cur.getMonth();
+  $('#title').textContent=`${MON[m]} ${y}`;
+  const first=new Date(y,m,1),start=monday(first);
+  let h='<div class="mgrid">'+DOW.map(d=>`<div class="dow">${d}</div>`).join('');
+  const t=ds(today());
+  for(let i=0;i<42;i++){
+    const d=addDays(start,i),k=ds(d);
+    if(i>=35&&d.getMonth()!==m)break;
+    const ev=evsOn(k),td=todosOn(k),open=td.filter(x=>!x.done).length;
+    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n">${d.getDate()}</div>`+
+      ev.slice(0,2).map(e=>`<span class="chip" style="background:${CATS[e.cat]||CATS.General}">${esc(e.title)}</span>`).join('')+
+      (ev.length>2?`<div class="cnt">+${ev.length-2} more</div>`:'')+
+      (td.length?`<div class="cnt">☑ ${open} open</div>`:'')+`</div>`;
+  }
+  h+='</div>';
+  const mk='m:'+y+'-'+pad(m+1);
+  h+=`<div class="sec"><h2>Month goals &amp; notes</h2>${noteBox(mk,'Goals, deadlines, things to remember this month…')}</div>`;
+  return h;
+}
+function renderWeek(){
+  const s=monday(cur),e=addDays(s,6);
+  $('#title').textContent=`${s.getDate()} ${MON[s.getMonth()].slice(0,3)} – ${e.getDate()} ${MON[e.getMonth()].slice(0,3)} ${e.getFullYear()}`;
+  const t=ds(today());
+  let h='<div class="wgrid">';
+  for(let i=0;i<7;i++){
+    const d=addDays(s,i),k=ds(d);
+    h+=`<div class="card ${k===t?'today':''}"><h3 data-a="goDay" data-d="${k}">${DOW[i]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}</h3>`+
+      evsOn(k).map(evHtml).join('')+
+      `<button class="add" data-a="newEv" data-d="${k}">+ event</button><div style="margin-top:8px">${todoBlock(k)}</div></div>`;
+  }
+  h+='</div>';
+  h+=`<div class="sec"><h2>Week plan &amp; notes</h2>${noteBox('w:'+ds(s),'Priorities and notes for this week…')}</div>`;
+  return h;
+}
+function renderDay(){
+  const k=ds(cur);
+  $('#title').textContent=`${DOW[(cur.getDay()+6)%7]}, ${cur.getDate()} ${MON[cur.getMonth()].slice(0,3)} ${cur.getFullYear()}`;
+  const prev=ds(addDays(cur,-1));
+  const carry=todosOn(prev).filter(t=>!t.done).length;
+  let h=`<div class="card"><div class="row"><b class="grow">Schedule</b><button class="btn pri" data-a="newEv" data-d="${k}">+ Event</button></div>`+
+    (evsOn(k).map(evHtml).join('')||'<p style="color:var(--mute)">Nothing scheduled.</p>')+`</div>`;
+  h+=`<div class="card sec"><div class="row"><b class="grow">To-do</b>${carry?`<button class="btn" data-a="carry">Carry over ${carry} from yesterday</button>`:''}</div>${todoBlock(k)}</div>`;
+  h+=`<div class="sec"><h2>Day notes</h2>${noteBox('d:'+k,'Notes, study log, thoughts for today…')}</div>`;
+  return h;
+}
+function render(){
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+  let h=banner();
+  h+=view==='month'?renderMonth():view==='week'?renderWeek():renderDay();
+  $('#app').innerHTML=h;
+}
+function banner(){
+  const lb=db.meta.lastBackup;
+  const days=lb?Math.floor((Date.now()-lb)/864e5):null;
+  if(!db.events.length&&!db.todos.length&&!Object.keys(db.notes).length)return '<div class="banner">Welcome. Tap a day to start, or use Backup → Restore if you have a saved file.</div>';
+  if(days===null||days>=1)return `<div class="banner warn">${days===null?'No backup yet.':'Last backup '+days+' day(s) ago.'} Open <b>Backup</b> and download one.</div>`;
+  return '';
+}
+
+const dlg=$('#evDlg');let editing=null;
+$('#evCat').innerHTML=Object.keys(CATS).map(c=>`<option>${c}</option>`).join('');
+function openEv(id,date){
+  editing=id?db.events.find(e=>e.id===id):null;
+  $('#evHead').textContent=editing?'Edit event':'New event';
+  $('#evTitle').value=editing?editing.title:'';
+  $('#evDate').value=editing?editing.date:date;
+  $('#evStart').value=editing?editing.start||'':'';
+  $('#evEnd').value=editing?editing.end||'':'';
+  $('#evCat').value=editing?editing.cat||'General':'General';
+  $('#evRem').value=editing&&editing.rem!=null?editing.rem:'';
+  $('#evDel').style.display=editing?'':'none';
+  dlg.showModal();
+}
+$('#evCancel').onclick=()=>dlg.close();
+$('#evDel').onclick=()=>{if(editing&&confirm('Delete this event?')){db.events=db.events.filter(e=>e.id!==editing.id);save();dlg.close();render()}};
+$('#evForm').addEventListener('submit',()=>{
+  const o={id:editing?editing.id:uid(),title:$('#evTitle').value.trim(),date:$('#evDate').value,start:$('#evStart').value,end:$('#evEnd').value,cat:$('#evCat').value,rem:$('#evRem').value};
+  if(!o.title||!o.date)return;
+  if(editing)Object.assign(editing,o);else db.events.push(o);
+  fired={};localStorage.setItem('planner.fired','{}');
+  save();render();
+});
+
+function go(n){
+  if(view==='month')cur=new Date(cur.getFullYear(),cur.getMonth()+n,1);
+  else cur=addDays(cur,n*(view==='week'?7:1));
+  render();
+}
+function exportData(){
+  db.meta.lastBackup=Date.now();save();
+  const blob=new Blob([JSON.stringify(db,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`planner-backup-${ds(new Date())}.json`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  bkInfo();render();
+}
+function bkInfo(){
+  const lb=db.meta.lastBackup;
+  $('#bkInfo').textContent=`${db.events.length} events, ${db.todos.length} to-dos, ${Object.keys(db.notes).length} notes. `+(lb?'Last backup: '+new Date(lb).toLocaleString():'No backup yet.');
+}
+$('#file').onchange=async ev=>{
+  const f=ev.target.files[0];if(!f)return;
+  try{
+    const x=JSON.parse(await f.text());
+    if(!x||!Array.isArray(x.events)||!Array.isArray(x.todos))throw 0;
+    if(!confirm('Replace everything on this device with the backup file?'))return;
+    db=Object.assign(fresh(),x);db.meta=db.meta||{};save();render();bkInfo();
+  }catch(e){alert('That file is not a valid planner backup.')}
+  ev.target.value='';
+};
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-a]');if(!t)return;
+  const a=t.dataset.a;
+  if(a==='view'){view=t.dataset.v;localStorage.setItem('planner.view',view);render()}
+  else if(a==='prev')go(-1);else if(a==='next')go(1);
+  else if(a==='today'){cur=today();render()}
+  else if(a==='goDay'){cur=parse(t.dataset.d);view='day';localStorage.setItem('planner.view',view);render()}
+  else if(a==='newEv')openEv(null,t.dataset.d);
+  else if(a==='editEv')openEv(t.dataset.id);
+  else if(a==='tog'){const x=db.todos.find(z=>z.id===t.dataset.id);x.done=t.checked;save();render()}
+  else if(a==='delTodo'){db.todos=db.todos.filter(z=>z.id!==t.dataset.id);save();render()}
+  else if(a==='carry'){const p=ds(addDays(cur,-1)),k=ds(cur);db.todos.forEach(z=>{if(z.date===p&&!z.done)z.date=k});save();render()}
+  else if(a==='menu'){bkInfo();$('#bkDlg').showModal()}
+  else if(a==='closeBk')$('#bkDlg').close();
+  else if(a==='export')exportData();
+  else if(a==='import')$('#file').click();
+  else if(a==='notif'){
+    if(!('Notification' in window))alert('Notifications are not supported here.');
+    else Notification.requestPermission().then(p=>alert(p==='granted'?'Reminders on. They fire while the app is open or recently used; background reminders come with Google Calendar sync later.':'Permission not granted.'));
+  }
+});
+document.addEventListener('keydown',e=>{
+  const i=e.target.closest&&e.target.closest('[data-add]');
+  if(i&&e.key==='Enter'&&i.value.trim()){
+    db.todos.push({id:uid(),date:i.dataset.add,text:i.value.trim(),done:false});save();render();
+    const n=document.querySelector(`[data-add="${i.dataset.add}"]`);n&&n.focus();
+  }
+});
+let nt;
+document.addEventListener('input',e=>{
+  const n=e.target.closest&&e.target.closest('[data-note]');
+  if(n){clearTimeout(nt);nt=setTimeout(()=>setNote(n.dataset.note,n.value),400)}
+});
+window.addEventListener('pagehide',()=>{const n=document.activeElement;if(n&&n.dataset&&n.dataset.note)setNote(n.dataset.note,n.value)});
+
+let fired=JSON.parse(localStorage.getItem('planner.fired')||'{}');
+function checkReminders(){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  const now=Date.now();
+  db.events.forEach(e=>{
+    if(!e.start||e.rem===''||e.rem==null)return;
+    const at=parse(e.date);const [h,mi]=e.start.split(':').map(Number);at.setHours(h,mi,0,0);
+    const when=at.getTime()-Number(e.rem)*60000;
+    const key=e.id+'@'+when;
+    if(now>=when&&now<when+10*60000&&!fired[key]){
+      fired[key]=1;localStorage.setItem('planner.fired',JSON.stringify(fired));
+      const body=`${e.start}${e.end?'–'+e.end:''}`;
+      navigator.serviceWorker&&navigator.serviceWorker.ready.then(r=>r.showNotification(e.title,{body,tag:key})).catch(()=>new Notification(e.title,{body}));
+    }
+  });
+}
+setInterval(checkReminders,30000);checkReminders();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(ds(today())!==ds(new Date())){}checkReminders()}});
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+render();
+</script>
+</body>
+</html>
