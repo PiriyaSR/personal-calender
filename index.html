@@ -70,14 +70,20 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
 .emrow{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
 .emrow button{font-size:20px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:2px 6px;cursor:pointer}
 .emrow button.on{border-color:var(--accent);background:var(--accent2)}
+.wide{grid-column:1/-1}.wide textarea{min-height:120px}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.dots{display:flex;gap:4px;margin:8px 0}.dot{width:18px;height:18px;border-radius:5px;background:var(--line)}.dot.on{background:var(--accent)}
+#streakBtn{font-weight:700}
 @media (max-width:760px){.wgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:640px){.cell{min-height:64px;padding:3px}.chip{font-size:10px;padding:1px 3px}#title{min-width:0;font-size:14px}.tabs button{padding:6px 9px;font-size:14px}.mtd{font-size:10px}.ev{font-size:12px}}
+@media (max-width:640px){.cell{min-height:64px;padding:3px}.chip{font-size:10px;padding:1px 3px}#title{min-width:0;font-size:14px}.tabs button{padding:6px 7px;font-size:13px}.mtd{font-size:10px}.ev{font-size:12px}}
 </style>
 </head>
 <body>
 <header>
   <div class="row">
     <h1 class="grow">My Planner</h1>
+    <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
   </div>
   <div class="row" style="margin-top:6px">
@@ -86,6 +92,7 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
       <button data-a="view" data-v="week">Week</button>
       <button data-a="view" data-v="day">Day</button>
       <button data-a="view" data-v="projects">Projects</button>
+      <button data-a="view" data-v="study">Study</button>
     </div>
     <span class="grow"></span>
     <button class="btn" data-a="prev">&lsaquo;</button>
@@ -112,10 +119,11 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
     </div>
     <div class="two">
       <div><label>Colour category</label><select id="evCat"></select></div>
-      <div id="remWrap"><label>Reminder</label>
-        <select id="evRem"><option value="">None</option><option value="0">At start</option><option value="10">10 min before</option><option value="30">30 min before</option><option value="60">1 hour before</option></select>
+      <div id="remWrap"><label>Phone alert (needs a start time)</label>
+        <select id="evRem"><option value="">None</option><option value="0">At the start time</option><option value="10">10 min before start</option><option value="30">30 min before start</option><option value="60">1 hour before start</option></select>
       </div>
     </div>
+    <p id="remHelp" style="font-size:12px;color:var(--mute);margin:8px 0 0">Phone alert is for timed events only: it pops up at the start time, or 10 / 30 / 60 min before. It appears when the app is open or you open it around that time. Deadlines don't use this; they alert you from 3 days before.</p>
     <div class="row" style="margin-top:14px">
       <button type="button" class="btn del" id="evDel">Delete</button>
       <span class="grow"></span>
@@ -143,6 +151,39 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
       <button class="btn pri">Save</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="sjDlg">
+  <form method="dialog" id="sjForm">
+    <b id="sjHead">Paper</b>
+    <label>Paper name</label><input type="text" id="sjName" required>
+    <label>Emoji (optional)</label><input type="text" id="sjEmoji" placeholder="📘" maxlength="8">
+    <label>Lecture type</label>
+    <select id="sjKind"><option value="recorded">Recorded (progress in %)</option><option value="live">Live (counted in days)</option></select>
+    <div class="two">
+      <div><label id="sjTotalL">Total lecture hours (optional)</label><input type="number" id="sjTotal" min="0" step="any"></div>
+      <div><label id="sjDoneL">% completed (0–100)</label><input type="number" id="sjDone" min="0" step="any"></div>
+    </div>
+    <label>Exam date for this paper (optional)</label><input type="date" id="sjExam">
+    <div class="row" style="margin-top:14px">
+      <button type="button" class="btn del" id="sjDel">Delete</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="sjCancel">Cancel</button>
+      <button class="btn pri">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlPop">
+  <b>⚠️ Deadlines coming up</b>
+  <div id="dlPopBody" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:10px"><span class="grow"></span><button class="btn pri" data-a="closePop">OK</button></div>
+</dialog>
+
+<dialog id="stDlg">
+  <div id="stBody"></div>
+  <p style="font-size:12px;color:var(--mute)">A day counts when you add or change something: an event, deadline, to-do, note or study progress. Just opening the app does not count.</p>
+  <div class="row"><span class="grow"></span><button class="btn" data-a="closeSt">Close</button></div>
 </dialog>
 
 <dialog id="bkDlg">
@@ -177,16 +218,16 @@ const CATS={General:'#1f6f5c',Study:'#3b6fb6',Exam:'#b4531a',Work:'#7a4fb0',Pers
 const EMOJIS=['📚','📝','🎯','⏰','🧾','📊','💰','💼','🎥','✅','⚠️','🔥','📞','🏥','🛒','✈️','🎂','🏋️','🙏','🏠','📅','💡','📌','☕'];
 
 const KEY='planner.v1';
-function fresh(){return{v:2,events:[],todos:[],notes:{},projects:[],pw:{},meta:{}}}
+function fresh(){return{v:3,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],meta:{}}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?Object.assign(fresh(),x):fresh()}catch(e){return fresh()}}
 let db=load();
 if(!db.meta)db.meta={};
-function save(){db.meta.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){alert('Could not save: storage full or blocked.')}}
+function save(silent){if(!silent){db.meta.log=db.meta.log||{};db.meta.log[ds(new Date())]=1}db.meta.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){alert('Could not save: storage full or blocked.')}}
 const getNote=k=>db.notes[k]||'';
 const setNote=(k,v)=>{if(v)db.notes[k]=v;else delete db.notes[k];save()};
 
 let view=localStorage.getItem('planner.view')||'month';
-if(!['month','week','day','projects'].includes(view))view='month';
+if(!['month','week','day','projects','study'].includes(view))view='month';
 let cur=new Date();cur.setHours(0,0,0,0);
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 
@@ -270,15 +311,14 @@ function renderMonth(){
 function renderWeek(){
   const s=monday(cur),e=addDays(s,6),t=ds(today());
   $('#title').textContent=`${s.getDate()} ${MON[s.getMonth()].slice(0,3)} – ${e.getDate()} ${MON[e.getMonth()].slice(0,3)} ${e.getFullYear()}`;
-  let h='<div class="wgrid">';
+  let h='<div class="wgrid">'+`<div class="card wide"><h3 style="cursor:default">Week plan &amp; notes</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}</div>`;
   for(let i=0;i<7;i++){
     const d=addDays(s,i),k=ds(d);
     h+=`<div class="card ${k===t?'today':''}"><h3 data-a="goDay" data-d="${k}">${DOW[i]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}</h3>`+
       evsOn(k).map(evHtml).join('')+
       `<button class="add" data-a="newEv" data-d="${k}">+ event / deadline</button><div style="margin-top:8px">${todoBlock(k)}</div></div>`;
   }
-  h+=`<div class="card"><h3 style="cursor:default">Week plan</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities and notes for this week…')}</div>`;
-  h+='</div>';
+    h+='</div>';
   return h;
 }
 function renderDay(){
@@ -321,6 +361,77 @@ function deadlineBanner(){
     return `<div class="dlrow"><span>${esc(label(e))} <small>— ${when} (${fmtShort(parse(e.date))})</small></span><button class="btn" data-a="dlDone" data-id="${e.id}" data-set="1">Done</button></div>`;
   }).join('')+`</div>`;
 }
+function dueSoon(){const t=ds(today());return db.events.filter(e=>isDl(e)&&!e.done&&daysBetween(t,e.date)<=3).sort((a,b)=>a.date.localeCompare(b.date))}
+function dlRows(list){
+  const t=ds(today());
+  return list.map(e=>{
+    const n=daysBetween(t,e.date);
+    const when=n<0?`overdue by ${-n} day(s)`:n===0?'due today':n===1?'due tomorrow':`due in ${n} days`;
+    return `<div class="dlrow"><span>${esc(label(e))} <small>— ${when} (${fmtShort(parse(e.date))})</small></span><button class="btn" data-a="dlDone" data-id="${e.id}" data-set="1">Done</button></div>`;
+  }).join('');
+}
+function showPop(){const l=dueSoon();if(!l.length)return;$('#dlPopBody').innerHTML=dlRows(l);const d=$('#dlPop');if(!d.open)d.showModal()}
+function refreshPop(){const d=$('#dlPop');if(!d.open)return;const l=dueSoon();if(!l.length)d.close();else $('#dlPopBody').innerHTML=dlRows(l)}
+
+/* ---------- streak ---------- */
+const MILES=[3,7,14,30,60,100,200,365];
+const BADGE={3:'🌱',7:'🔥',14:'⚡',30:'🏆',60:'💎',100:'👑',200:'🚀',365:'🌟'};
+function streakInfo(){
+  const log=db.meta.log||{},t=ds(today());
+  let n=0,d=today();
+  if(!log[ds(d)])d=addDays(d,-1);
+  while(log[ds(d)]){n++;d=addDays(d,-1)}
+  const days=Object.keys(log).sort();
+  let best=0,run=0,prev=null;
+  days.forEach(k=>{run=(prev&&daysBetween(prev,k)===1)?run+1:1;if(run>best)best=run;prev=k});
+  return{cur:n,best,total:days.length,today:!!log[t]};
+}
+function updateStreakBtn(){const b=$('#streakBtn');if(b)b.textContent='🔥 '+streakInfo().cur}
+function streakBanner(){
+  const s=streakInfo();if(s.today)return '';
+  return `<div class="banner">🔥 ${s.cur>0?`Log something today to keep your ${s.cur}-day streak alive`:'Log something today to start your streak'}</div>`;
+}
+function openStreak(){
+  const s=streakInfo(),log=db.meta.log||{};
+  let dots='';
+  for(let i=13;i>=0;i--)dots+=`<div class="dot ${log[ds(addDays(today(),-i))]?'on':''}"></div>`;
+  const next=MILES.find(m=>m>s.cur);
+  const earned=MILES.filter(m=>m<=s.best).map(m=>BADGE[m]+' '+m).join(' · ');
+  $('#stBody').innerHTML=`<div style="font-size:34px;font-weight:700">🔥 ${s.cur} day${s.cur===1?'':'s'}</div><p>${s.today?'Logged today ✓':'Not logged yet today'}</p><div class="dots">${dots}</div><small style="color:var(--mute)">Last 14 days (today on the right)</small><p>Longest streak: <b>${s.best}</b> · Days logged: <b>${s.total}</b></p>${next?`<p>${next-s.cur} more day(s) to reach ${BADGE[next]} ${next}-day streak.</p>`:''}<p>Badges earned: ${earned||'none yet'}</p>`;
+  $('#stDlg').showModal();
+}
+
+/* ---------- study tracker ---------- */
+function pct(s){return s.kind==='live'?(s.total>0?Math.min(100,Math.round(100*s.done/s.total)):0):Math.min(100,Math.max(0,Math.round(Number(s.done)||0)))}
+function remHours(s){return(s.kind==='recorded'&&s.total>0)?s.total*(100-pct(s))/100:0}
+function renderStudy(){
+  $('#title').textContent='Study tracker';
+  const t=ds(today()),start=db.meta.studyStart||'2026-11-25',ex=db.meta.examDate||'';
+  const d0=daysBetween(t,start);
+  const startTxt=d0>0?`Studies start in ${d0} day(s)`:d0===0?'Day 1 of studies, today!':`Day ${1-d0} of studies`;
+  const exLeft=ex?daysBetween(t,ex):null;
+  const subs=db.subjects;
+  const avg=subs.length?Math.round(subs.reduce((a,s)=>a+pct(s),0)/subs.length):0;
+  const remH=subs.reduce((a,s)=>a+remHours(s),0);
+  let h=`<div class="card"><div class="two"><div><label>Studies start</label><input type="date" data-meta="studyStart" value="${esc(start)}"></div><div><label>Exams start (optional)</label><input type="date" data-meta="examDate" value="${esc(ex)}"></div></div>`+
+    `<p style="margin:10px 0 2px"><b>${startTxt}</b>${exLeft!==null?` · <b>${exLeft>0?exLeft+' days to exams':exLeft===0?'Exams start today':'Exams have started'}</b>`:''}</p>`+
+    `<div class="bar"><i style="width:${avg}%"></i></div><div>Overall progress: <b>${avg}%</b> across ${subs.length} paper(s)</div>`+
+    (remH>0?`<div style="color:var(--mute);font-size:13px">Recorded lectures left: about ${remH.toFixed(1)} hrs${exLeft>0?`, so about ${(remH/exLeft).toFixed(1)} hrs/day to finish before exams`:''}</div>`:'')+`</div>`;
+  h+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="newSub">+ Add paper</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
+  subs.forEach(s=>{
+    const p=pct(s),live=s.kind==='live';
+    const target=s.exam||ex,left=target?daysBetween(t,target):null,rh=remHours(s);
+    h+=`<div class="card sec"><div class="row"><b class="grow">${esc(s.emoji||'📘')} ${esc(s.name)}</b><small style="color:var(--mute)">${live?'Live':'Recorded'}</small><button class="btn" data-a="editSub" data-id="${s.id}">Edit</button></div>`+
+      `<div class="bar"><i style="width:${p}%"></i></div>`+
+      `<div class="row"><span><b>${p}%</b>${live?` · ${s.done}/${s.total||'?'} days`:''}</span><span class="grow"></span><button class="btn" data-a="subStep" data-id="${s.id}" data-d="-1">${live?'−1 day':'−5%'}</button><button class="btn pri" data-a="subStep" data-id="${s.id}" data-d="1">${live?'+1 day':'+5%'}</button></div>`+
+      `<div style="color:var(--mute);font-size:13px;margin-top:4px">`+
+      (live&&s.total>0?`${Math.max(0,s.total-s.done)} live day(s) left. `:'')+
+      (rh>0?`${rh.toFixed(1)} hrs left${left>0?`, about ${(rh/left).toFixed(1)} hrs/day`:''}. `:'')+
+      (target?(left>0?`Paper in ${left} day(s) (${fmtShort(parse(target))}).`:left===0?'Paper is today.':'Paper date passed.'):'')+
+      `</div></div>`;
+  });
+  return h;
+}
 function backupBanner(){
   const lb=db.meta.lastBackup;
   const days=lb?Math.floor((Date.now()-lb)/864e5):null;
@@ -330,10 +441,10 @@ function backupBanner(){
 }
 function render(){
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
-  document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=view==='projects'?'none':'');
-  let h=deadlineBanner()+backupBanner();
-  h+=view==='month'?renderMonth():view==='week'?renderWeek():view==='day'?renderDay():renderProjects();
-  $('#app').innerHTML=h;
+  document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=(view==='projects'||view==='study')?'none':'');
+  let h=deadlineBanner()+streakBanner()+backupBanner();
+  h+=view==='month'?renderMonth():view==='week'?renderWeek():view==='day'?renderDay():view==='projects'?renderProjects():renderStudy();
+  $('#app').innerHTML=h;updateStreakBtn();
 }
 
 /* ---------- event dialog ---------- */
@@ -341,7 +452,7 @@ const dlg=$('#evDlg');let editing=null;
 $('#evCat').innerHTML=Object.keys(CATS).map(c=>`<option>${c}</option>`).join('');
 $('#emRow').innerHTML=EMOJIS.map(e=>`<button type="button" data-em="${e}">${e}</button>`).join('');
 function markEm(){document.querySelectorAll('#emRow button').forEach(b=>b.classList.toggle('on',b.dataset.em===$('#evEmoji').value.trim()))}
-function syncKind(){const dl=$('#evKind').value==='deadline';$('#remWrap').style.display=dl?'none':'';$('#endWrap').style.display=dl?'none':''}
+function syncKind(){const dl=$('#evKind').value==='deadline';$('#remWrap').style.display=dl?'none':'';$('#endWrap').style.display=dl?'none':'';$('#remHelp').style.display=dl?'none':''}
 $('#emRow').addEventListener('click',e=>{const b=e.target.closest('[data-em]');if(!b)return;const i=$('#evEmoji');i.value=(i.value.trim()===b.dataset.em)?'':b.dataset.em;markEm()});
 $('#evEmoji').addEventListener('input',markEm);
 $('#evKind').addEventListener('change',syncKind);
@@ -400,6 +511,33 @@ $('#pjForm').addEventListener('submit',ev=>{
   save();render();
 });
 
+/* ---------- paper (subject) dialog ---------- */
+const sdlg=$('#sjDlg');let sEditing=null;
+function syncSj(){const live=$('#sjKind').value==='live';$('#sjTotalL').textContent=live?'Total live days':'Total lecture hours (optional)';$('#sjDoneL').textContent=live?'Days attended so far':'% completed (0–100)'}
+$('#sjKind').addEventListener('change',syncSj);
+function openSub(id){
+  sEditing=id?db.subjects.find(s=>s.id===id):null;
+  $('#sjHead').textContent=sEditing?'Edit paper':'New paper';
+  $('#sjName').value=sEditing?sEditing.name:'';
+  $('#sjEmoji').value=sEditing?sEditing.emoji||'':'';
+  $('#sjKind').value=sEditing?sEditing.kind:'recorded';
+  $('#sjTotal').value=sEditing&&sEditing.total?sEditing.total:'';
+  $('#sjDone').value=sEditing?sEditing.done:0;
+  $('#sjExam').value=sEditing?sEditing.exam||'':'';
+  $('#sjDel').style.display=sEditing?'':'none';
+  syncSj();sdlg.showModal();
+}
+$('#sjCancel').onclick=()=>sdlg.close();
+$('#sjDel').onclick=()=>{if(sEditing&&confirm('Delete this paper?')){db.subjects=db.subjects.filter(s=>s.id!==sEditing.id);save();sdlg.close();render()}};
+$('#sjForm').addEventListener('submit',ev=>{
+  const kind=$('#sjKind').value;
+  const o={id:sEditing?sEditing.id:uid(),name:$('#sjName').value.trim(),emoji:$('#sjEmoji').value.trim(),kind,total:Math.max(0,Number($('#sjTotal').value)||0),done:Math.max(0,Number($('#sjDone').value)||0),exam:$('#sjExam').value};
+  if(!o.name){ev.preventDefault();alert('Give the paper a name.');return}
+  if(kind==='recorded')o.done=Math.min(100,o.done);else if(o.total>0)o.done=Math.min(o.total,o.done);
+  if(sEditing)Object.assign(sEditing,o);else db.subjects.push(o);
+  save();render();
+});
+
 /* ---------- navigation, backup ---------- */
 function go(n){
   if(view==='month')cur=new Date(cur.getFullYear(),cur.getMonth()+n,1);
@@ -407,7 +545,7 @@ function go(n){
   render();
 }
 function exportData(){
-  db.meta.lastBackup=Date.now();save();
+  db.meta.lastBackup=Date.now();save(true);
   const blob=new Blob([JSON.stringify(db,null,1)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=`planner-backup-${ds(new Date())}.json`;a.click();
@@ -424,7 +562,7 @@ $('#file').onchange=async ev=>{
     const x=JSON.parse(await f.text());
     if(!x||!Array.isArray(x.events)||!Array.isArray(x.todos))throw 0;
     if(!confirm('Replace everything on this device with the backup file?')){ev.target.value='';return}
-    db=Object.assign(fresh(),x);db.meta=db.meta||{};save();render();bkInfo();
+    db=Object.assign(fresh(),x);db.meta=db.meta||{};save(true);render();bkInfo();
   }catch(e){alert('That file is not a valid planner backup.')}
   ev.target.value='';
 };
@@ -438,8 +576,21 @@ document.addEventListener('click',e=>{
   else if(a==='goDay'){cur=parse(t.dataset.d);view='day';localStorage.setItem('planner.view',view);render()}
   else if(a==='newEv')openEv(null,t.dataset.d);
   else if(a==='editEv')openEv(t.dataset.id);
-  else if(a==='dlDone'){const x=db.events.find(z=>z.id===t.dataset.id);if(x){x.done=t.dataset.set?true:t.checked;save();render()}}
+  else if(a==='dlDone'){const x=db.events.find(z=>z.id===t.dataset.id);if(x){x.done=t.dataset.set?true:t.checked;save();render();refreshPop()}}
   else if(a==='mmode'){localStorage.setItem('planner.mmode',(localStorage.getItem('planner.mmode')||'full')==='full'?'emoji':'full');render()}
+  else if(a==='streak')openStreak();
+  else if(a==='closeSt')$('#stDlg').close();
+  else if(a==='closePop')$('#dlPop').close();
+  else if(a==='newSub')openSub(null);
+  else if(a==='editSub')openSub(t.dataset.id);
+  else if(a==='add12'){for(let i=1;i<=12;i++)db.subjects.push({id:uid(),name:'Paper '+i,emoji:'',kind:'recorded',total:0,done:0,exam:''});save();render()}
+  else if(a==='subStep'){
+    const s=db.subjects.find(z=>z.id===t.dataset.id);
+    if(s){const d=Number(t.dataset.d);
+      if(s.kind==='live'){s.done=Math.max(0,(Number(s.done)||0)+d);if(s.total>0)s.done=Math.min(s.done,s.total)}
+      else s.done=Math.min(100,Math.max(0,(Number(s.done)||0)+5*d));
+      save();render()}
+  }
   else if(a==='newProj')openProj(null);
   else if(a==='editProj')openProj(t.dataset.id);
   else if(a==='pwDone'){if(t.checked)db.pw[t.dataset.key]=true;else delete db.pw[t.dataset.key];save()}
@@ -462,6 +613,7 @@ document.addEventListener('keydown',e=>{
     const n=document.querySelector(`[data-add="${i.dataset.add}"]`);n&&n.focus();
   }
 });
+document.addEventListener('change',e=>{const i=e.target.closest&&e.target.closest('[data-meta]');if(i){db.meta[i.dataset.meta]=i.value;save(true);render()}});
 let nt;
 document.addEventListener('input',e=>{
   const n=e.target.closest&&e.target.closest('[data-note]');
@@ -506,11 +658,16 @@ function checkReminders(){
   });
 }
 setInterval(checkReminders,30000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();checkReminders()}});
+let hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){hiddenAt=Date.now();return}
+  render();checkReminders();
+  if(hiddenAt&&Date.now()-hiddenAt>10*60000)showPop();
+});
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
-render();checkReminders();
+render();checkReminders();showPop();
 </script>
 </body>
 </html>
