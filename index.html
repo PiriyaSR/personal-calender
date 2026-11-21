@@ -62,6 +62,8 @@ textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:8
 .pwk.now{background:var(--accent2);border-radius:8px;padding:8px}
 .pwk textarea{min-height:56px;margin-top:6px}
 .pwk small{color:var(--mute)}
+.wkhead{cursor:pointer}.chev{color:var(--mute);font-size:16px;padding:0 4px}
+.prev{font-size:12px;color:var(--mute);margin:4px 0 0 28px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);width:min(440px,94vw);padding:16px;max-height:92vh;overflow:auto}
 dialog::backdrop{background:#0006}
 label{display:block;font-size:12px;color:var(--mute);margin-top:10px}
@@ -142,7 +144,9 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
   <form method="dialog" id="pjForm">
     <b id="pjHead">Project</b>
     <label>Project name</label><input type="text" id="pjName" required>
-    <label>Emoji (optional)</label><input type="text" id="pjEmoji" placeholder="📘" maxlength="8">
+    <label>Icon (tap one, or type your own emoji)</label>
+    <div class="emrow" id="pjEmRow"></div>
+    <input type="text" id="pjEmoji" placeholder="📘" maxlength="8">
     <label>Day 1 (start date)</label><input type="date" id="pjStart" required>
     <div class="two">
       <div><label>Length</label><input type="number" id="pjN" min="1" max="520" value="12" required></div>
@@ -182,7 +186,9 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
   <form method="dialog" id="sjForm">
     <b id="sjHead">Paper</b>
     <label>Paper name</label><input type="text" id="sjName" required>
-    <label>Emoji (optional)</label><input type="text" id="sjEmoji" placeholder="📘" maxlength="8">
+    <label>Icon (tap one, or type your own emoji)</label>
+    <div class="emrow" id="sjEmRow"></div>
+    <input type="text" id="sjEmoji" placeholder="📘" maxlength="8">
     <label>Lecture type</label>
     <select id="sjKind"><option value="recorded">Recorded (progress in %)</option><option value="live">Live (counted in days)</option></select>
     <div class="two">
@@ -360,6 +366,8 @@ function renderDay(){
   h+=`<div class="sec"><h2>Day notes</h2>${noteBox('d:'+k,'Notes, study log, thoughts for today…')}</div>`;
   return h;
 }
+function wkState(){try{return JSON.parse(localStorage.getItem('planner.wk')||'{}')}catch(e){return{}}}
+function isWkOpen(key,now){const s=wkState();return key in s?!!s[key]:now}
 function renderProjects(){
   $('#title').textContent='Projects';
   const t=ds(today());
@@ -367,10 +375,12 @@ function renderProjects(){
   if(!db.projects.length)h+=`<p style="color:var(--mute)">Add a project with a start date and a length in weeks or months. Weeks are named and numbered automatically from day 1.</p>`;
   db.projects.forEach(p=>{
     const tot=projWeeks(p);
-    h+=`<div class="card sec"><div class="row"><b class="grow">${esc(p.emoji||'📘')} ${esc(p.name)}</b><small style="color:var(--mute)">${fmtShort(parse(p.start))} → ${fmtShort(addDays(projEnd(p),-1))} · ${tot} weeks</small><button class="btn" data-a="editProj" data-id="${p.id}">Edit</button></div>`;
+    h+=`<div class="card sec"><div class="row"><b class="grow">${esc(p.emoji||'📘')} ${esc(p.name)}</b><small style="color:var(--mute)">${fmtShort(parse(p.start))} → ${fmtShort(addDays(projEnd(p),-1))} · ${tot} weeks</small><button class="btn" data-a="wkAll" data-id="${p.id}" data-v="1">Expand all</button><button class="btn" data-a="wkAll" data-id="${p.id}" data-v="0">Collapse all</button><button class="btn" data-a="editProj" data-id="${p.id}">Edit</button></div>`;
     for(let w=1;w<=tot;w++){
       const [a,b]=weekRange(p,w),now=t>=ds(a)&&t<=ds(b),key=p.id+':'+w;
-      h+=`<div class="pwk ${now?'now':''}"><div class="row"><input type="checkbox" data-a="pwDone" data-key="${key}" ${db.pw[key]?'checked':''}><b>Week ${w}</b><small>${fmtShort(a)} – ${fmtShort(b)}${now?' · this week':''}</small></div><textarea data-note="p:${key}" placeholder="Goals / tasks / notes for week ${w}…">${esc(getNote('p:'+key))}</textarea></div>`;
+      const isOpen=isWkOpen(key,now),note=getNote('p:'+key);
+      h+=`<div class="pwk ${now?'now':''}"><div class="row wkhead" data-a="togWk" data-key="${key}" data-now="${now?1:0}"><input type="checkbox" data-a="pwDone" data-key="${key}" ${db.pw[key]?'checked':''}><b>Week ${w}</b><small>${fmtShort(a)} – ${fmtShort(b)}${now?' · this week':''}</small><span class="grow"></span><span class="chev">${isOpen?'▾':'▸'}</span></div>`+
+        (isOpen?`<textarea data-note="p:${key}" placeholder="Goals / tasks / notes for week ${w}…">${esc(note)}</textarea>`:(note?`<div class="prev">${esc(note.split('\n')[0].slice(0,70))}</div>`:''))+`</div>`;
     }
     h+='</div>';
   });
@@ -551,6 +561,16 @@ function genDates(start,rep){
   return out;
 }
 wireRep('ev');wireRep('td');
+const ICONS=['📘','📗','📙','📕','📚','📝','🎯','🧾','📊','💼','⚖️','🧮','🏛️','💡','🔥','🌟','🚀','🪔','🙏','🕉️','📖','🎓','✏️','🧠'];
+function wirePicker(rowId,inputId){
+  const row=$('#'+rowId),inp=$('#'+inputId);
+  row.innerHTML=ICONS.map(e=>`<button type="button" data-ic="${e}">${e}</button>`).join('');
+  const mark=()=>row.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.ic===inp.value.trim()));
+  row.addEventListener('click',e=>{const b=e.target.closest('[data-ic]');if(!b)return;inp.value=inp.value.trim()===b.dataset.ic?'':b.dataset.ic;mark()});
+  inp.addEventListener('input',mark);
+  inp._mark=mark;
+}
+wirePicker('pjEmRow','pjEmoji');wirePicker('sjEmRow','sjEmoji');
 
 /* ---------- event dialog ---------- */
 const dlg=$('#evDlg');let editing=null;
@@ -683,7 +703,7 @@ function openProj(id){
   pEditing=id?db.projects.find(p=>p.id===id):null;
   $('#pjHead').textContent=pEditing?'Edit project':'New project';
   $('#pjName').value=pEditing?pEditing.name:'';
-  $('#pjEmoji').value=pEditing?pEditing.emoji||'':'';
+  $('#pjEmoji').value=pEditing?pEditing.emoji||'':'';$('#pjEmoji')._mark();
   $('#pjStart').value=pEditing?pEditing.start:ds(today());
   $('#pjN').value=pEditing?pEditing.n:12;
   $('#pjUnit').value=pEditing?pEditing.unit:'weeks';
@@ -714,7 +734,7 @@ function openSub(id){
   sEditing=id?db.subjects.find(s=>s.id===id):null;
   $('#sjHead').textContent=sEditing?'Edit paper':'New paper';
   $('#sjName').value=sEditing?sEditing.name:'';
-  $('#sjEmoji').value=sEditing?sEditing.emoji||'':'';
+  $('#sjEmoji').value=sEditing?sEditing.emoji||'':'';$('#sjEmoji')._mark();
   $('#sjKind').value=sEditing?sEditing.kind:'recorded';
   $('#sjTotal').value=sEditing&&sEditing.total?sEditing.total:'';
   $('#sjDone').value=sEditing?sEditing.done:0;
@@ -786,6 +806,8 @@ document.addEventListener('click',e=>{
       else s.done=Math.min(100,Math.max(0,(Number(s.done)||0)+5*d));
       save();render()}
   }
+  else if(a==='togWk'){const s=wkState(),k=t.dataset.key,now=t.dataset.now==='1';const cur=(k in s)?s[k]:now;s[k]=!cur;localStorage.setItem('planner.wk',JSON.stringify(s));render()}
+  else if(a==='wkAll'){const p=db.projects.find(z=>z.id===t.dataset.id);if(p){const s=wkState(),v=t.dataset.v==='1';for(let w=1;w<=projWeeks(p);w++)s[p.id+':'+w]=v;localStorage.setItem('planner.wk',JSON.stringify(s));render()}}
   else if(a==='newProj')openProj(null);
   else if(a==='editProj')openProj(t.dataset.id);
   else if(a==='pwDone'){if(t.checked)db.pw[t.dataset.key]=true;else delete db.pw[t.dataset.key];save()}
