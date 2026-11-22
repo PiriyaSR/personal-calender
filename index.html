@@ -181,7 +181,7 @@ dialog .repbox,dialog form{max-width:100%}
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v10</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v11</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -511,28 +511,25 @@ let selDay=null;const lastTap={k:'',t:0};
 function monthGrid(y,m){
   const t=ds(today()),N=new Date(y,m+1,0).getDate(),R=Math.ceil(N/7);
   if(!selDay||selDay.slice(0,7)!==y+'-'+pad(m+1))selDay=(t.slice(0,7)===y+'-'+pad(m+1))?t:ds(new Date(y,m,1));
-  const HUE=[48,340,190,150,270];
+  const HUE=[48,340,190,150,270],mode=localStorage.getItem('planner.mm')||'over';
   let h=`<div class="mgrid fit" style="grid-template-rows:repeat(${R},minmax(0,1fr))">`;
   for(let i=0;i<N;i++){
     const d=new Date(y,m,i+1),k=ds(d),r=Math.floor(i/7);
-    const ag=agendaOn(k),openN=todosOn(k).filter(x=>!x.done).length+sessionsOn(k).filter(x=>!x.done).length;
-    const all=ag.map(x=>x.kind==='session'?`<span data-it class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`:chipHtml(x,'emoji'));
-    const icons=all.join(''),extra=0;
-    h+=`<div class="cell ${k===t?'today':''} ${k===selDay?'sel':''}" style="--h:${HUE[r%5]}" data-a="selDay" data-d="${k}"><div class="n"><span>${DOW[(d.getDay()+6)%7]} ${i+1}</span></div><div class="nar"><div class="emos">${icons}</div>${(openN||extra>0)?`<div class="cnt">${openN?'☐'+openN:''}${extra>0?' +'+extra:''}</div>`:''}</div></div>`;
+    const ag=agendaOn(k),sess=sessionsOn(k),td=todosOn(k),openN=td.filter(x=>!x.done).length+sess.filter(x=>!x.done).length;
+    const sIc=x=>`<span data-it class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`;
+    let all,cnt='';
+    if(mode==='sched'){all=ag.map(x=>x.kind==='session'?sIc(x):chipHtml(x,'emoji'))}
+    else if(mode==='todo'){all=td.map(x=>`<span data-it class="emo ${x.done?'dn':''}">${x.done?'✅':'☐'}</span>`).concat(sess.map(sIc))}
+    else if(mode==='proj'){all=sess.map(sIc)}
+    else{all=ag.map(x=>x.kind==='session'?sIc(x):chipHtml(x,'emoji'));cnt=openN?`<div class="cnt">☐${openN}</div>`:''}
+    const icons=all.join('');
+    h+=`<div class="cell ${k===t?'today':''} ${k===selDay?'sel':''}" style="--h:${HUE[r%5]}" data-a="selDay" data-d="${k}"><div class="n"><span>${DOW[(d.getDay()+6)%7]} ${i+1}</span></div><div class="nar"><div class="emos">${icons}</div>${cnt}</div></div>`;
   }
   h+='</div>';
   const todos=todosOn(selDay),ss=sessionsOn(selDay);
-  const mode=localStorage.getItem('planner.mm')||'over';
-  let body,head;
-  if(mode==='sched'){head='Schedule & deadlines · '+MON[m];body=monthSched(y,m)}
-  else if(mode==='todo'){head='To-do lists · '+MON[m];body=monthTodo(y,m)}
-  else if(mode==='proj'){head='Projects · '+MON[m];body=monthProj(y,m)}
-  else if(mode==='notes'){head='Month goals & notes';body=noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}
-  else{
-    const todos=todosOn(selDay),ss=sessionsOn(selDay);
-    head=null;
-    body=(agendaHtml(selDay)+ss.map(sessTodoHtml).join('')+todos.map(todoHtml).join(''))||'<p class="hint" style="margin:6px 0">Nothing planned. Double-tap a day to open it.</p>';
-  }
+  let body,head=null;
+  if(mode==='notes'){head='Month goals & notes';body=noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}
+  else body=(agendaHtml(selDay)+ss.map(sessTodoHtml).join('')+todos.map(todoHtml).join(''))||'<p class="hint" style="margin:6px 0">Nothing planned. Double-tap a day to open it.</p>';
   h+=`<div class="dpanel"><div class="row" style="flex-wrap:nowrap;gap:4px">`+(head?`<b class="grow" style="cursor:default">${esc(head)}</b>`:`<b class="grow" data-a="goDay" data-d="${selDay}">${dayLabel(selDay)}${selDay===t?' · today':''} ›</b><button class="mini" data-a="qtodo" data-d="${selDay}" title="Add a to-do">☐+</button><button class="mini" data-a="newEv" data-d="${selDay}" title="Add an event or deadline">＋</button>`)+`</div><div class="dbody">${body}</div></div>`;
   return h;
 }
@@ -575,7 +572,7 @@ function renderMonth(){
   const y=cur.getFullYear(),m=cur.getMonth();
   $('#title').textContent=`${MON[m]} ${y}`;
   const mode=localStorage.getItem('planner.mm')||'over';
-  const MM=[['over','🔭 Overview','🔭 Day'],['sched','Schedule & deadlines','Schedule'],['todo','To-do lists','To-do'],['proj','Projects','Projects'],['notes','📝 Notes','📝']];
+  const MM=[['over','🔭 Overview','🔭 All'],['sched','Schedule & deadlines','Schedule'],['todo','To-do lists','To-do'],['proj','Projects','Projects'],['notes','📝 Notes','📝']];
   let h=`<div class="seg">${MM.map(([k,l,sh])=>`<button class="${mode===k?'on':''}" data-a="mm" data-m="${k}"><span class="lg">${esc(l)}</span><span class="sm">${esc(sh)}</span></button>`).join('')}</div>`;
   h+=monthGrid(y,m);
   return h;
