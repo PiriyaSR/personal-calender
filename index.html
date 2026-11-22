@@ -186,6 +186,22 @@ input[type=text],input[type=password],input[type=date],input[type=time],input[ty
 .mkrow .sc{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .mkrow .pc{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
 .mkrow .nt{color:var(--mute);font-size:12px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+
+/* ===== strict 3 x 10 month grid ===== */
+.mgrid.t3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mgrid.t3 .cell{display:flex;gap:5px;align-items:flex-start}
+.mgrid.t3 .cell .n{flex:none;flex-direction:column;align-items:center;justify-content:flex-start;width:26px}
+.mgrid.t3 .cell .dh{flex-direction:column;gap:0}
+.mgrid.t3 .nar,.mgrid.t3 .wid{flex:1;min-width:0}
+.mgrid.t3 .emos{margin-top:0;font-size:15px}
+.mgrid.t3 .pt-n{margin-top:0}
+.cell.empty{background:transparent;border-style:dashed;cursor:default}
+.cellpair{display:grid;grid-template-rows:1fr 1fr;gap:3px;min-height:0;min-width:0}
+.mgrid.t3 .cellpair .cell{padding:1px 4px;align-items:center}
+.mgrid.t3 .cellpair .cell .n{flex-direction:row;width:auto}
+.mgrid.t3 .cellpair .cell .dh{flex-direction:row;gap:2px}
+.mgrid.t3 .cellpair .cell .emos{font-size:13px}
+.mgrid.t3 .cellpair .cell .cnt{display:inline}
 </style>
 </head>
 <body>
@@ -554,19 +570,27 @@ function statSub(){
   db.todos.forEach(t=>{if(S.has(t.date)){if(t.done)done++;else open++}});
   return `<div class="tsub"><span title="Events"><i>📅</i><b>${ev}</b><u> ${ev===1?'event':'events'}</u></span><span title="Deadlines"><i>🎯</i><b>${dl}</b><u> ${dl===1?'deadline':'deadlines'}</u></span><span title="To-dos left"><i>☐</i><b>${open}</b><u> to-do left</u></span>${done?`<span class="sd" title="To-dos done"><i>✔</i><b>${done}</b><u> done</u></span>`:''}</div>`;
 }
+function monthCell(k,d,extra){
+  const ag=agendaOn(k),open=todosOn(k).filter(x=>!x.done),openN=open.length+sessionsOn(k).filter(x=>!x.done).length;
+  let tags='';
+  db.projects.forEach(p=>{const pw=projWeekOf(p,k);if(pw&&pw.day===1)tags+=`<span class="ptag">${esc(p.emoji||'📘')}W${pw.w}</span>`});
+  const tg=tags?`<div data-it class="pt-n">${tags}</div>`:'';
+  const icons=ag.map(x=>x.kind==='session'?`<span data-it class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`:chipHtml(x,'emoji')).join('');
+  const chips=ag.map(x=>x.kind==='session'?`<span data-it class="chip ${x.done?'dn':''}" style="--c:${x.col}"><b>${x.start}</b> ${esc(x.emoji)} ${esc(x.name)}</span>`:chipHtml(x,'full')).join('');
+  const todos=open.map(x=>`<div data-it class="mtd">☐ ${esc(x.text)}</div>`).join('');
+  return `<div class="cell ${extra||''} ${k===ds(today())?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span class="dh"><span class="dw">${DOW[(d.getDay()+6)%7]}</span><span class="dn">${d.getDate()}</span></span></div><div class="nar">${tg}<div class="emos">${icons}</div>${openN?`<div class="cnt">☐ ${openN}</div>`:''}</div><div class="wid">${tg}${chips}${todos}</div></div>`;
+}
+/* strict 3 columns x 10 rows: boxes 1-30 across the rows; day 31 shares the last box */
 function monthGrid(y,m){
-  const first=new Date(y,m,1),start=monday(first),t=ds(today());
-  const R=Math.ceil(((first.getDay()+6)%7+new Date(y,m+1,0).getDate())/7);
-  let h=`<div class="mgrid fit" style="grid-template-rows:auto repeat(${R},minmax(0,1fr))">`+DOW.map(d=>`<div class="dow">${d}</div>`).join('');
-  for(let i=0;i<R*7;i++){
-    const d=addDays(start,i),k=ds(d);
-    const ag=agendaOn(k),open=todosOn(k).filter(x=>!x.done),openN=open.length+sessionsOn(k).filter(x=>!x.done).length;
-    let tags='';
-    db.projects.forEach(p=>{const pw=projWeekOf(p,k);if(pw&&pw.day===1)tags+=`<span class="ptag">${esc(p.emoji||'📘')}W${pw.w}</span>`});
-    const icons=ag.map(x=>x.kind==='session'?`<span data-it class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`:chipHtml(x,'emoji')).join('');
-    const chips=ag.map(x=>x.kind==='session'?`<span data-it class="chip ${x.done?'dn':''}" style="--c:${x.col}"><b>${x.start}</b> ${esc(x.emoji)} ${esc(x.name)}</span>`:chipHtml(x,'full')).join('');
-    const todos=open.map(x=>`<div data-it class="mtd">☐ ${esc(x.text)}</div>`).join('');
-    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span class="dh"><span class="dw">${DOW[i%7]}</span><span class="dn">${d.getDate()}</span></span><span class="pt-w">${tags}</span></div><div class="nar">${tags?`<div data-it class="pt-n">${tags}</div>`:''}<div class="emos">${icons}</div>${openN?`<div class="cnt">☐ ${openN}</div>`:''}</div><div class="wid">${chips}${todos}</div></div>`;
+  const n=new Date(y,m+1,0).getDate();
+  let h=`<div class="mgrid fit t3" style="grid-template-rows:repeat(10,minmax(0,1fr))">`;
+  for(let day=1;day<=30;day++){
+    if(day>n){h+=`<div class="cell empty out"></div>`;continue}
+    const d=new Date(y,m,day);
+    if(day===30&&n===31){
+      const d2=new Date(y,m,31);
+      h+=`<div class="cellpair">${monthCell(ds(d),d,'half')}${monthCell(ds(d2),d2,'half')}</div>`;
+    }else h+=monthCell(ds(d),d);
   }
   return h+'</div>';
 }
@@ -830,7 +854,7 @@ function backupBanner(){
 function layoutFit(){
   const g=document.querySelector('.fit');if(!g)return;
   const top=g.getBoundingClientRect().top+window.scrollY;
-  g.style.setProperty('--gridH',Math.max(300,Math.floor(window.innerHeight-top-12))+'px');
+  g.style.setProperty('--gridH',Math.max(g.classList.contains('mgrid')?440:300,Math.floor(window.innerHeight-top-12))+'px');
   if(g.classList.contains('mgrid'))fitCells();
 }
 function fitCells(){
