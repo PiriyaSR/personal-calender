@@ -164,12 +164,24 @@ html:has(body.nos){overflow:hidden}body.nos{overflow:hidden}html.scaled body{max
 .dpanel .grow{font-size:14px;cursor:pointer}
 .dpanel .ev{font-size:13px;padding:5px 8px;margin:3px 0}
 html.scaled .seg .lg{display:none}html.scaled .seg .sm{display:inline}html.scaled .seg{flex-wrap:nowrap}html.scaled .seg button{padding:6px 10px}html.scaled #title{font-size:14px}html.scaled .tabs button{padding:6px 7px;font-size:13px}
+html.scaled dialog{width:calc(94vw/var(--z,1));max-height:calc(92vh/var(--z,1));max-width:calc(100vw/var(--z,1) - 16px)}
+html.scaled dialog .emrow button,html.scaled dialog .iconrow button{font-size:18px}
+dialog .emrow{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+dialog .emrow button{flex:0 0 auto}
+dialog{padding:12px 14px}
+dialog label{margin-top:8px;font-size:12px}
+dialog input,dialog select,dialog textarea{padding:7px 9px;font-size:15px}
+dialog #remHelp{font-size:11px!important;margin-top:6px!important}
+dialog .repbox,dialog form{max-width:100%}
+.extbox{margin-top:12px;padding:10px;border:1px dashed var(--accent);border-radius:10px;background:var(--accent2);font-size:13px}
+.extgo{background:var(--accent);color:#fff;border-color:var(--accent)}
+.extbox .row{gap:6px;margin-top:6px;flex-wrap:wrap}
 </style>
 </head>
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v9</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v10</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -510,8 +522,18 @@ function monthGrid(y,m){
   }
   h+='</div>';
   const todos=todosOn(selDay),ss=sessionsOn(selDay);
-  h+=`<div class="dpanel"><div class="row" style="flex-wrap:nowrap;gap:4px"><b class="grow" data-a="goDay" data-d="${selDay}">${dayLabel(selDay)}${selDay===t?' · today':''} ›</b><button class="mini" data-a="qtodo" data-d="${selDay}" title="Add a to-do">☐+</button><button class="mini" data-a="newEv" data-d="${selDay}" title="Add an event or deadline">＋</button></div><div class="dbody">`+
-    (agendaHtml(selDay)+ss.map(sessTodoHtml).join('')+todos.map(todoHtml).join('')||'<p class="hint" style="margin:6px 0">Nothing planned. Double-tap a day to open it.</p>')+`</div></div>`;
+  const mode=localStorage.getItem('planner.mm')||'over';
+  let body,head;
+  if(mode==='sched'){head='Schedule & deadlines · '+MON[m];body=monthSched(y,m)}
+  else if(mode==='todo'){head='To-do lists · '+MON[m];body=monthTodo(y,m)}
+  else if(mode==='proj'){head='Projects · '+MON[m];body=monthProj(y,m)}
+  else if(mode==='notes'){head='Month goals & notes';body=noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}
+  else{
+    const todos=todosOn(selDay),ss=sessionsOn(selDay);
+    head=null;
+    body=(agendaHtml(selDay)+ss.map(sessTodoHtml).join('')+todos.map(todoHtml).join(''))||'<p class="hint" style="margin:6px 0">Nothing planned. Double-tap a day to open it.</p>';
+  }
+  h+=`<div class="dpanel"><div class="row" style="flex-wrap:nowrap;gap:4px">`+(head?`<b class="grow" style="cursor:default">${esc(head)}</b>`:`<b class="grow" data-a="goDay" data-d="${selDay}">${dayLabel(selDay)}${selDay===t?' · today':''} ›</b><button class="mini" data-a="qtodo" data-d="${selDay}" title="Add a to-do">☐+</button><button class="mini" data-a="newEv" data-d="${selDay}" title="Add an event or deadline">＋</button>`)+`</div><div class="dbody">${body}</div></div>`;
   return h;
 }
 function monthSched(y,m){
@@ -553,10 +575,9 @@ function renderMonth(){
   const y=cur.getFullYear(),m=cur.getMonth();
   $('#title').textContent=`${MON[m]} ${y}`;
   const mode=localStorage.getItem('planner.mm')||'over';
-  const MM=[['over','🔭 Overview','🔭 Overview'],['sched','Schedule & deadlines','Schedule'],['todo','To-do lists','To-do'],['proj','Projects','Projects']];
+  const MM=[['over','🔭 Overview','🔭 Day'],['sched','Schedule & deadlines','Schedule'],['todo','To-do lists','To-do'],['proj','Projects','Projects'],['notes','📝 Notes','📝']];
   let h=`<div class="seg">${MM.map(([k,l,sh])=>`<button class="${mode===k?'on':''}" data-a="mm" data-m="${k}"><span class="lg">${esc(l)}</span><span class="sm">${esc(sh)}</span></button>`).join('')}</div>`;
-  h+=mode==='sched'?monthSched(y,m):mode==='todo'?monthTodo(y,m):mode==='proj'?monthProj(y,m):monthGrid(y,m);
-  if(mode!=='over')h+=`<div class="sec"><h2>Month goals &amp; notes</h2>${noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}</div>`;
+  h+=monthGrid(y,m);
   return h;
 }
 function renderWeek(){
@@ -717,9 +738,9 @@ function backupBanner(){
 }
 let SC=1;
 function fitScale(){
-  const de=document.documentElement;de.style.zoom='';de.classList.remove('scaled');SC=1;
+  const de=document.documentElement;de.style.zoom='';de.style.removeProperty('--z');de.classList.remove('scaled');SC=1;
   const sw=Math.min(screen.width||9999,screen.height||9999),iw=window.innerWidth;
-  if(sw<=600&&iw>sw*1.25){SC=iw/Math.max(sw,320);de.style.zoom=SC;de.classList.add('scaled')}
+  if(sw<=600&&iw>sw*1.25){SC=iw/Math.max(sw,320);de.style.zoom=SC;de.style.setProperty('--z',SC);de.classList.add('scaled')}
 }
 function layoutFit(){
   const g=document.querySelector('.fit');
@@ -840,6 +861,59 @@ function genDates(start,rep){
   return out;
 }
 wireRep('ev');wireRep('td');
+/* ---------- extend a repeat from any day ---------- */
+function seriesPattern(dates){
+  const d=[...new Set(dates)].sort();
+  if(d.length>=2){
+    let gaps=true;for(let i=1;i<d.length;i++)if((parse(d[i])-parse(d[i-1]))/864e5<28){gaps=false;break}
+    if(gaps)return{freq:'monthly',days:[]};
+  }
+  const wd=[...new Set(d.map(x=>(parse(x).getDay()+6)%7))];
+  return wd.length===7?{freq:'daily',days:wd}:{freq:'weekdays',days:wd};
+}
+function extHtml(p){
+  return `<div class="extbox" id="${p}Ext" style="display:none"><b>🔁 Extend this repeat</b>
+<div id="${p}ExtInfo" style="margin-top:4px"></div>
+<label>Continue until</label><input type="date" id="${p}ExtDate">
+<div class="row"><button type="button" class="btn" data-ext="${p}:1">+1 month</button><button type="button" class="btn" data-ext="${p}:3">+3 months</button><button type="button" class="btn" data-ext="${p}:6">+6 months</button><span class="grow"></span><button type="button" class="btn extgo" data-ext="${p}:go">Extend</button></div></div>`;
+}
+function setupExt(p,item,list){
+  const box=$('#'+p+'Ext');
+  if(!item||!item.seriesId){box.style.display='none';return}
+  const ser=list.filter(x=>x.seriesId===item.seriesId).map(x=>x.date).sort();
+  const last=ser[ser.length-1];
+  $('#'+p+'ExtInfo').innerHTML=`${ser.length} days from ${dayLabel(ser[0])}. Ends <b>${dayLabel(last)} ${parse(last).getFullYear()}</b>.`;
+  $('#'+p+'ExtDate').value=ds(addDays(parse(last),31));$('#'+p+'ExtDate').min=ds(addDays(parse(last),1));
+  box.style.display='';
+}
+function doExtend(p,item,list,push){
+  const dateEl=$('#'+p+'ExtDate'),until=dateEl.value;
+  const items=list.filter(x=>x.seriesId===item.seriesId).sort((a,b)=>a.date<b.date?-1:1);
+  const last=items[items.length-1].date;
+  if(!until||until<=last){alert('Pick a date after '+dayLabel(last)+'.');return false}
+  const pat=seriesPattern(items.map(x=>x.date));
+  let dates;
+  if(pat.freq==='monthly')dates=genDates(last,{freq:'monthly',days:[],until}).slice(1);
+  else dates=genDates(ds(addDays(parse(last),1)),{freq:pat.freq,days:pat.days,until});
+  if(!dates.length){alert('No days fall in that range.');return false}
+  const tpl=items[items.length-1];
+  dates.forEach(dt=>push(Object.assign({},tpl,{id:uid(),date:dt,done:false,custom:false,u:undefined})));
+  save();render();checkReminders();
+  alert('Added '+dates.length+' more days, now until '+dayLabel(dates[dates.length-1])+'.');
+  return true;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-ext]');if(!b)return;
+  const [p,v]=b.dataset.ext.split(':'),isEv=p==='ev';
+  const item=isEv?editing:tdEditing,list=isEv?db.events:db.todos;
+  if(!item)return;
+  if(v==='go'){if(doExtend(p,item,list,x=>list.push(x)))(isEv?dlg:tdlg).close();return}
+  const items=list.filter(x=>x.seriesId===item.seriesId).map(x=>x.date).sort();
+  const last=parse(items[items.length-1]);
+  $('#'+p+'ExtDate').value=ds(new Date(last.getFullYear(),last.getMonth()+Number(v),last.getDate()));
+});
+
+$('#evRepWrap').insertAdjacentHTML('afterend',extHtml('ev'));$('#tdRepWrap').insertAdjacentHTML('afterend',extHtml('td'));
 const ICONS=['📘','📗','📙','📕','📚','📝','🎯','🧾','📊','💼','⚖️','🧮','🏛️','💡','🔥','🌟','🚀','🪔','🙏','🕉️','📖','🎓','✏️','🧠'];
 function wirePicker(rowId,inputId){
   const row=$('#'+rowId),inp=$('#'+inputId);
@@ -872,7 +946,7 @@ function openEv(id,date){
   $('#evCat').value=editing?editing.cat||'General':'General';
   $('#evRem').value=editing&&editing.rem!=null?editing.rem:'';
   $('#evDel').style.display=editing?'':'none';
-  resetRep('ev');$('#evRepBox').style.display=editing?'none':'';
+  resetRep('ev');$('#evRepBox').style.display=editing?'none':'';setupExt('ev',editing,db.events);
   syncKind();markEm();
   dlg.showModal();
 }
@@ -930,7 +1004,7 @@ function openTodo(id,date){
   $('#tdDate').value=tdEditing?tdEditing.date:date;
   $('#tdDel').style.display=tdEditing?'':'none';
   resetRep('td');
-  $('#tdRepBox').style.display=tdEditing?'none':'';
+  $('#tdRepBox').style.display=tdEditing?'none':'';setupExt('td',tdEditing,db.todos);
   if(!tdEditing){$('#tdFreq').value='daily';syncRep('td')}
   tdlg.showModal();
 }
