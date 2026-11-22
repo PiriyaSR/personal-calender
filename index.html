@@ -202,6 +202,24 @@ input[type=text],input[type=password],input[type=date],input[type=time],input[ty
 .mgrid.t3 .cellpair .cell .dh{flex-direction:row;gap:2px}
 .mgrid.t3 .cellpair .cell .emos{font-size:13px}
 .mgrid.t3 .cellpair .cell .cnt{display:inline}
+
+/* ===== calendar-app look: borderless month, hairlines, tinted one-line pills ===== */
+.ev,.chip{--tx:78%;background:color-mix(in srgb,var(--c,var(--accent)) 20%,var(--card));border-left:0;color:color-mix(in srgb,var(--c,var(--accent)) var(--tx),var(--ink));font-weight:600}
+@media (prefers-color-scheme:dark){.ev,.chip{--tx:58%;background:color-mix(in srgb,var(--c,var(--accent)) 26%,var(--card))}}
+.chip{border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgrid.t3{gap:0 12px}
+.mgrid.t3 .cell,.mgrid.t3 .cell.today{background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;padding:5px 0 3px}
+.mgrid.t3 .cell.empty{border-top:1px solid var(--line);border-style:solid none none none;opacity:.5}
+.mgrid.t3 .cell .nar{display:none}
+.mgrid.t3 .cell .wid{display:block}
+.mgrid.t3 .chip{margin-top:2px;padding:1px 5px;font-size:11px}
+.mgrid.t3 .chip:first-child{margin-top:0}
+.mgrid.t3 .mtd{color:var(--mute);margin-top:2px}
+.mgrid.t3 .cnt{color:var(--mute);margin-top:1px}
+.mgrid.t3 .cellpair{gap:0}
+.mgrid.t3 .cellpair .cell{padding:2px 0}
+.mgrid.t3 .cellpair .cell+.cell{border-top:1px dotted var(--line)}
+@media (max-width:699px){.mgrid.t3 .chip b{display:none}}
 </style>
 </head>
 <body>
