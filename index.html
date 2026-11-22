@@ -176,12 +176,25 @@ dialog .repbox,dialog form{max-width:100%}
 .extbox{margin-top:12px;padding:10px;border:1px dashed var(--accent);border-radius:10px;background:var(--accent2);font-size:13px}
 .extgo{background:var(--accent);color:#fff;border-color:var(--accent)}
 .extbox .row{gap:6px;margin-top:6px;flex-wrap:wrap}
+/* colour dots instead of solid rows */
+.ev{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.ev::before{content:"";flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--c)}
+.ev input{accent-color:var(--accent)}
+.ev small{opacity:.75}
+.wgrid.fit .ev,.wgrid.big .ev,.dpanel .ev{box-shadow:none}
+.emo{position:relative;display:inline-block}
+.emo.cd::after{content:"";position:absolute;right:-2px;bottom:0;width:7px;height:7px;border-radius:50%;background:var(--c);border:1px solid var(--card)}
+.chip{background-clip:padding-box}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--mute);margin:6px 2px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.mkt{margin-top:8px}.mkrow{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.mkrec{display:flex;gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer}
 </style>
 </head>
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v11</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v12</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -299,6 +312,28 @@ dialog .repbox,dialog form{max-width:100%}
   </form>
 </dialog>
 
+<dialog id="mkDlg">
+  <form method="dialog" id="mkForm">
+    <b id="mkHead">Mock test</b>
+    <label>Paper</label><select id="mkSub"></select>
+    <div class="two">
+      <div><label>Date taken</label><input type="date" id="mkDate" required></div>
+      <div><label>Name (optional)</label><input type="text" id="mkName" placeholder="e.g. ICAI Mock 1"></div>
+    </div>
+    <div class="two">
+      <div><label>Marks scored</label><input type="number" id="mkMarks" min="0" step="any" required></div>
+      <div><label>Out of</label><input type="number" id="mkOut" min="1" step="any" value="100" required></div>
+    </div>
+    <label>Notes: weak topics, mistakes (optional)</label><textarea id="mkNote" rows="3" style="width:100%"></textarea>
+    <div class="row" style="margin-top:14px">
+      <button type="button" class="btn del" id="mkDel">Delete</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="mkCancel">Cancel</button>
+      <button class="btn pri">Save</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="sjDlg">
   <form method="dialog" id="sjForm">
     <b id="sjHead">Paper</b>
@@ -385,13 +420,14 @@ const CATS={General:'#1f6f5c',Study:'#3b6fb6',Exam:'#b4531a',Work:'#7a4fb0',Pers
 const EMOJIS=['📚','📝','🎯','⏰','🧾','📊','💰','💼','🎥','✅','⚠️','🔥','📞','🏥','🛒','✈️','🎂','🏋️','🙏','🏠','📅','💡','📌','☕'];
 
 const KEY='planner.v1';
-function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],hlog:{},meta:{}}}
+function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],mocks:[],hlog:{},meta:{}}}
 function migrate(d){
   if((d.v||0)<4){
     (d.subjects||[]).forEach(s=>{if(s.kind==='recorded')s.done=s.total>0?Math.round(s.total*(Number(s.done)||0)/100*10)/10:0});
     d.v=4;
   }
   if(!d.hlog)d.hlog={};
+  if(!d.mocks)d.mocks=[];
   return d;
 }
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?migrate(Object.assign(fresh(),x)):fresh()}catch(e){return fresh()}}
@@ -402,7 +438,7 @@ function save(silent){if(!silent){db.meta.log=db.meta.log||{};db.meta.log[ds(new
 function touch(k){db.ts=db.ts||{};db.ts[k]=Date.now()}
 
 /* ---------- change tracking (used by sync) ---------- */
-const COLS=['events','todos','projects','subjects'];
+const COLS=['events','todos','projects','subjects','mocks'];
 const SIGKEY='planner.sig';
 const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h.toString(36)+s.length};
 const itemSig=it=>{const c=Object.assign({},it);delete c.u;return hash(JSON.stringify(c))};
@@ -478,19 +514,20 @@ function projLinesForDays(a,b){
 }
 
 /* ---------- html pieces ---------- */
+const legendHtml=()=>`<div class="legend">${Object.keys(CATS).map(c=>`<span><i style="background:${CATS[c]}"></i>${c}</span>`).join('')}<span><i style="background:var(--warn)"></i>Deadline</span></div>`;
 function evHtml(e){
   const dl=isDl(e),col=dl?'var(--warn)':(CATS[e.cat]||CATS.General);
   const t=e.start?`<small>${e.start}${(!dl&&e.end)?'–'+e.end:''}</small>`:'';
   const chk=dl?`<input type="checkbox" ${e.done?'checked':''} data-a="dlDone" data-id="${e.id}" aria-label="Done">`:'';
-  return `<div class="ev ${dl&&e.done?'dn':''}" style="background:${col}" data-a="editEv" data-id="${e.id}">${chk}${(dl&&!e.emoji)?'🎯 ':''}${t}<span>${esc(label(e))}${e.seriesId?' 🔁':''}</span>${(!dl&&e.rem!==''&&e.rem!=null)?' 🔔':''}</div>`;
+  return `<div class="ev ${dl&&e.done?'dn':''}" style="--c:${col}" data-a="editEv" data-id="${e.id}">${chk}${(dl&&!e.emoji)?'🎯 ':''}${t}<span>${esc(label(e))}${e.seriesId?' 🔁':''}</span>${(!dl&&e.rem!==''&&e.rem!=null)?' 🔔':''}</div>`;
 }
 function chipHtml(e,mode){
   const dl=isDl(e),done=dl&&e.done,col=dl?'var(--warn)':(CATS[e.cat]||CATS.General);
-  if(mode==='emoji'){const inner=e.emoji?esc(e.emoji):(dl?'🎯':`<i class="edot" style="background:${col}"></i>`);return `<span data-it class="emo ${done?'dn':''}" title="${esc(label(e))}">${inner}</span>`}
+  if(mode==='emoji'){const inner=e.emoji?esc(e.emoji):(dl?'🎯':`<i class="edot" style="background:${col}"></i>`);return `<span data-it class="emo ${e.emoji||dl?'cd':''} ${done?'dn':''}" style="--c:${col}" title="${esc(label(e))}">${inner}</span>`}
   return `<span data-it class="chip ${done?'dn':''}" style="background:${col}">${e.start?`<b>${e.start}</b> `:''}${(dl&&!e.emoji)?'🎯 ':''}${esc(label(e))}</span>`;
 }
 function sessHtml(x){
-  return `<div class="ev ${x.done?'dn':''}" style="background:${x.col}" data-a="goProj" data-id="${x.pid}" data-w="${x.week}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}" aria-label="Done"><small>${x.start}${x.end?'–'+x.end:''}</small><span>${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week}</span></div>`;
+  return `<div class="ev ${x.done?'dn':''}" style="--c:${x.col}" data-a="goProj" data-id="${x.pid}" data-w="${x.week}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}" aria-label="Done"><small>${x.start}${x.end?'–'+x.end:''}</small><span>${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week}</span></div>`;
 }
 function sessTodoHtml(x){
   return `<div class="todo ${x.done?'done':''}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}"><span data-a="goProj" data-id="${x.pid}" data-w="${x.week}">${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week} · ${x.start}${x.end?'–'+x.end:''}</span></div>`;
@@ -516,7 +553,7 @@ function monthGrid(y,m){
   for(let i=0;i<N;i++){
     const d=new Date(y,m,i+1),k=ds(d),r=Math.floor(i/7);
     const ag=agendaOn(k),sess=sessionsOn(k),td=todosOn(k),openN=td.filter(x=>!x.done).length+sess.filter(x=>!x.done).length;
-    const sIc=x=>`<span data-it class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`;
+    const sIc=x=>`<span data-it class="emo cd ${x.done?'dn':''}" style="--c:${x.col}">${esc(x.emoji)}</span>`;
     let all,cnt='';
     if(mode==='sched'){all=ag.map(x=>x.kind==='session'?sIc(x):chipHtml(x,'emoji'))}
     else if(mode==='todo'){all=td.map(x=>`<span data-it class="emo ${x.done?'dn':''}">${x.done?'✅':'☐'}</span>`).concat(sess.map(sIc))}
@@ -580,7 +617,7 @@ function renderMonth(){
 function renderWeek(){
   const s=monday(cur),e=addDays(s,6),t=ds(today());
   $('#title').textContent=`${s.getDate()} ${MON[s.getMonth()].slice(0,3)} – ${e.getDate()} ${MON[e.getMonth()].slice(0,3)} ${e.getFullYear()}`;
-  let h='<div class="wgrid big">'+`<div class="card plan"><h3 style="cursor:default">Week plan &amp; notes</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}</div>`;
+  let h='<div class="wgrid big">'+`<div class="card plan"><h3 style="cursor:default">Week plan &amp; notes</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}${legendHtml()}</div>`;
   for(let i=0;i<7;i++){
     const d=addDays(s,i),k=ds(d);
     h+=`<div class="card ${k===t?'today':''} ${i===6?'sun':''}"><div class="row" style="flex-wrap:nowrap;gap:4px"><h3 class="grow" data-a="goDay" data-d="${k}">${DOW[i]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}</h3><button class="mini" data-a="qtodo" data-d="${k}" title="Add a to-do">☐+</button><button class="mini" data-a="newEv" data-d="${k}" title="Add an event or deadline">＋</button></div>`+
@@ -597,7 +634,7 @@ function renderDay(){
   const pl=projLinesForDays(k,k);
   if(pl)h+=`<div class="card" style="margin-bottom:10px">${db.projects.map(p=>{const w=projWeekOf(p,k);return w?`<div class="pline">${esc(p.emoji||'📘')} ${esc(p.name)} · Week ${w.w} of ${w.total} · Day ${w.day}</div>`:''}).join('')}</div>`;
   h+=`<div class="card"><div class="row"><b class="grow">Schedule &amp; deadlines</b><button class="btn pri" data-a="newEv" data-d="${k}">+ Add</button></div>`+
-    (agendaHtml(k)||'<p style="color:var(--mute)">Nothing scheduled.</p>')+`</div>`;
+    (agendaHtml(k)||'<p style="color:var(--mute)">Nothing scheduled.</p>')+legendHtml()+`</div>`;
   h+=`<div class="card sec"><div class="row"><b class="grow">To-do</b><button class="btn" data-a="newRepTodo" data-d="${k}">🔁 Repeating to-do</button><button class="btn" data-a="newRev" data-d="${k}">🧠 Revision</button>${carry?`<button class="btn" data-a="carry">Carry over ${carry} from yesterday</button>`:''}</div>${todoBlock(k)}</div>`;
   h+=`<div class="sec"><h2>Day notes</h2>${noteBox('d:'+k,'Notes, study log, thoughts for today…')}</div>`;
   return h;
@@ -693,6 +730,24 @@ function openStreak(){
 const fmtN=n=>String(Math.round((Number(n)||0)*100)/100);
 function pct(s){return s.total>0?Math.min(100,Math.round(100*(Number(s.done)||0)/s.total)):0}
 function remHours(s){return(s.kind==='recorded'&&s.total>0)?Math.max(0,s.total-(Number(s.done)||0)):0}
+const mkPct=m=>m.outOf>0?Math.round(1000*m.marks/m.outOf)/10:0;
+function mockCard(subs){
+  const ms=(db.mocks||[]).slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+  let h=`<div class="card sec"><div class="row"><b class="grow">📝 Mock tests</b><button class="btn pri" data-a="newMock">+ Add mock</button></div>`;
+  if(!ms.length)return h+`<p style="color:var(--mute);margin:8px 0 0">Log each mock test you attempt. You'll see your latest, best and average per paper, and whether you are improving.</p></div>`;
+  const by={};ms.forEach(m=>(by[m.subId]=by[m.subId]||[]).push(m));
+  h+=`<div class="mkt">`;
+  Object.keys(by).forEach(id=>{
+    const sj=subs.find(x=>x.id===id),l=by[id],ps=l.map(mkPct),latest=ps[0],best=Math.max(...ps),avg=Math.round(10*ps.reduce((a,b)=>a+b,0)/ps.length)/10;
+    const trend=ps.length>1?(ps[0]>ps[1]?'▲':ps[0]<ps[1]?'▼':'▬'):'';
+    const tcol=trend==='▲'?'#2e8b57':trend==='▼'?'#c0392b':'var(--mute)';
+    const flag=latest>=50?'✅':latest>=40?'⚠️':'❗';
+    h+=`<div class="mkrow"><b class="grow">${esc((sj&&(sj.emoji||'📘'))||'📘')} ${esc(sj?sj.name:'(deleted paper)')}</b><span>${l.length} test${l.length>1?'s':''}</span><span>Latest <b>${latest}%</b> ${flag} <span style="color:${tcol}">${trend}</span></span><span>Best ${best}%</span><span>Avg ${avg}%</span></div>`;
+  });
+  h+=`</div><div style="font-size:11px;color:var(--mute);margin:4px 0">✅ 50% or more · ⚠️ 40–49% · ❗ below 40%</div><b style="font-size:13px">Recent</b>`;
+  ms.slice(0,8).forEach(m=>{const sj=subs.find(x=>x.id===m.subId);h+=`<div class="mkrec" data-a="editMock" data-id="${m.id}"><small>${fmtShort(parse(m.date))}</small><span class="grow">${esc((sj&&(sj.emoji||'📘'))||'')} ${esc(m.name||(sj?sj.name:'Mock'))}</span><b>${fmtN(m.marks)}/${fmtN(m.outOf)}</b><span>${mkPct(m)}%</span></div>`});
+  return h+`</div>`;
+}
 function renderStudy(){
   $('#title').textContent='Study tracker';
   const t=ds(today()),start=db.meta.studyStart||'2026-11-25',ex=db.meta.examDate||'';
@@ -712,6 +767,7 @@ function renderStudy(){
     `<div class="bar"><i style="width:${avg}%"></i></div><div>Overall progress: <b>${avg}%</b> across ${subs.length} paper(s)</div>`+
     `<div style="margin-top:10px"><div class="row"><b>Study hours today: ${fmtN(hsum(t))} / ${fmtN(target)}</b><span class="grow"></span><span style="font-size:13px">Daily target <input type="number" class="hin" min="0.5" step="0.5" data-meta="target" value="${target}" style="width:64px"></span></div><div class="bar"><i style="width:${Math.min(100,Math.round(100*hsum(t)/target))}%"></i></div><div class="wbars">${bars}</div><div style="font-size:12px;color:var(--mute);margin-top:4px">Last 7 days, today on the right · ${fmtN(wk7)} hrs in total</div></div>`+(remH>0?`<div style="color:var(--mute);font-size:13px">Recorded lectures left: about ${remH.toFixed(1)} hrs${exLeft>0?`, so about ${(remH/exLeft).toFixed(1)} hrs/day to finish before exams`:''}</div>`:'')+`</div>`;
   h+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="logStudy">+ Log study time</button><button class="btn" data-a="newRev">🧠 Add revision</button><button class="btn" data-a="newSub">+ Add paper</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
+  h+=mockCard(subs);
   subs.forEach(s=>{
     const p=pct(s),live=s.kind==='live';
     const target=s.exam||ex,left=target?daysBetween(t,target):null,rh=remHours(s);
@@ -1138,13 +1194,39 @@ function openSub(id){
   syncSj();sdlg.showModal();
 }
 $('#sjCancel').onclick=()=>sdlg.close();
-$('#sjDel').onclick=()=>{if(sEditing&&confirm('Delete this paper?')){db.subjects=db.subjects.filter(s=>s.id!==sEditing.id);save();sdlg.close();render()}};
+$('#sjDel').onclick=()=>{if(sEditing&&confirm('Delete this paper and its mock test records?')){db.mocks=(db.mocks||[]).filter(m=>m.subId!==sEditing.id);db.subjects=db.subjects.filter(s=>s.id!==sEditing.id);save();sdlg.close();render()}};
 $('#sjForm').addEventListener('submit',ev=>{
   const kind=$('#sjKind').value;
   const o={id:sEditing?sEditing.id:uid(),name:$('#sjName').value.trim(),emoji:$('#sjEmoji').value.trim(),kind,total:Math.max(0,Number($('#sjTotal').value)||0),done:Math.max(0,Number($('#sjDone').value)||0),exam:$('#sjExam').value};
   if(!o.name){ev.preventDefault();alert('Give the paper a name.');return}
   if(o.total>0)o.done=Math.min(o.total,o.done);
   if(sEditing)Object.assign(sEditing,o);else db.subjects.push(o);
+  save();render();
+});
+
+/* ---------- mock tests ---------- */
+const mkdlg=$('#mkDlg');let mkEditing=null;
+function openMock(id){
+  if(!db.subjects.length){alert('Add your papers first (Study → Add paper), then log mock tests.');return}
+  mkEditing=id?db.mocks.find(m=>m.id===id):null;
+  $('#mkHead').textContent=mkEditing?'Edit mock test':'New mock test';
+  $('#mkSub').innerHTML=db.subjects.map(x=>`<option value="${x.id}">${esc((x.emoji||'📘')+' '+x.name)}</option>`).join('');
+  $('#mkSub').value=mkEditing?mkEditing.subId:db.subjects[0].id;
+  $('#mkDate').value=mkEditing?mkEditing.date:ds(today());
+  $('#mkName').value=mkEditing?mkEditing.name||'':'';
+  $('#mkMarks').value=mkEditing?mkEditing.marks:'';
+  $('#mkOut').value=mkEditing?mkEditing.outOf:100;
+  $('#mkNote').value=mkEditing?mkEditing.note||'':'';
+  $('#mkDel').style.display=mkEditing?'':'none';
+  mkdlg.showModal();
+}
+$('#mkCancel').onclick=()=>mkdlg.close();
+$('#mkDel').onclick=()=>{if(mkEditing&&confirm('Delete this mock test?')){db.mocks=db.mocks.filter(m=>m.id!==mkEditing.id);save();mkdlg.close();render()}};
+$('#mkForm').addEventListener('submit',ev=>{
+  const o={id:mkEditing?mkEditing.id:uid(),subId:$('#mkSub').value,date:$('#mkDate').value,name:$('#mkName').value.trim(),marks:Number($('#mkMarks').value),outOf:Number($('#mkOut').value),note:$('#mkNote').value.trim()};
+  if(!(o.outOf>0)||!(o.marks>=0)||!o.date){ev.preventDefault();alert('Enter marks and the total marks.');return}
+  if(o.marks>o.outOf){ev.preventDefault();alert('Marks scored cannot be more than the total.');return}
+  if(mkEditing)Object.assign(mkEditing,o);else db.mocks.push(o);
   save();render();
 });
 
@@ -1194,6 +1276,8 @@ document.addEventListener('click',e=>{
   else if(a==='streak')openStreak();
   else if(a==='closeSt')$('#stDlg').close();
   else if(a==='closePop')$('#dlPop').close();
+  else if(a==='newMock')openMock(null);
+  else if(a==='editMock')openMock(t.dataset.id);
   else if(a==='newSub')openSub(null);
   else if(a==='editSub')openSub(t.dataset.id);
   else if(a==='add12'){for(let i=1;i<=12;i++)db.subjects.push({id:uid(),name:'Paper '+i,emoji:'',kind:'recorded',total:0,done:0,exam:''});save();render()}
