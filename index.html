@@ -38,7 +38,7 @@ main{padding:12px;max-width:1200px;margin:0 auto}
 .cell .n{font-size:12px;font-weight:700;display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px}
 .ptag{font-size:10px;font-weight:600;background:var(--accent2);color:var(--accent);border-radius:4px;padding:0 3px}
 .chip{display:block;font-size:12px;border-radius:4px;padding:3px 5px;margin-top:3px;color:#fff;line-height:1.25}
-.emos{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;font-size:20px;line-height:1.1}
+.emos{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;font-size:16px;line-height:1.1;align-items:center}
 .emo.dn,.chip.dn,.ev.dn{opacity:.55;text-decoration:line-through}
 .cnt{font-size:11px;color:var(--mute);margin-top:2px}
 .mtd{font-size:12px;color:var(--ink);margin-top:3px;line-height:1.25}
@@ -82,6 +82,20 @@ input[type=text],input[type=password],input[type=date],input[type=time],input[ty
 .bar i{display:block;height:100%;background:var(--accent);border-radius:6px}
 .dots{display:flex;gap:4px;margin:8px 0}.dot{width:18px;height:18px;border-radius:5px;background:var(--line)}.dot.on{background:var(--accent)}
 #streakBtn{font-weight:700}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.seg button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.hint{font-size:12px;color:var(--mute);margin:6px 0}
+.lcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:8px}
+.dayhdr{font-weight:700;font-size:14px;margin-bottom:4px;cursor:pointer}
+.dayhdr.today{color:var(--accent)}
+.srow{display:flex;gap:6px;align-items:center;margin:4px 0;font-size:13px}
+.srow .d{width:88px;flex:none}
+.srow input[type=time]{flex:1;min-width:0;width:auto;padding:6px}
+.patbox{border:1px dashed var(--line);border-radius:8px;padding:8px;margin:8px 0}
+.edot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle}
+.cell .wid{display:none}
+@media (min-width:700px){.cell .nar{display:none}.cell .wid{display:block}}
 #syncBtn{display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 9px}
 .sdot{width:10px;height:10px;border-radius:50%;background:#9aa5a0;display:inline-block;flex:none}
 #syncBtn[data-s=ok] .sdot{background:#2e9e5b}
@@ -94,7 +108,7 @@ input[type=text],input[type=password],input[type=date],input[type=time],input[ty
 .repbox{border-top:1px solid var(--line);margin-top:12px;padding-top:2px}
 .repbox input[type=date],.repbox input[type=number],.repbox select{margin-top:6px}
 @media (max-width:760px){.wgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:640px){.cell{min-height:112px;padding:3px}.cell .n{font-size:10px}.cell .n>span:first-child{white-space:nowrap}.dow{font-size:11px;padding:3px 0}.chip{font-size:10px;padding:1px 3px}#title{min-width:0;font-size:14px}.tabs button{padding:6px 7px;font-size:13px}.mtd{font-size:10px}.ev{font-size:12px}}
+@media (max-width:640px){.cell{min-height:80px;padding:3px}.cell .n{font-size:10px}.cell .n>span:first-child{white-space:nowrap}.dow{font-size:11px;padding:3px 0}.chip{font-size:10px;padding:1px 3px}#title{min-width:0;font-size:14px}.tabs button{padding:6px 7px;font-size:13px}.mtd{font-size:10px}.ev{font-size:12px}}
 </style>
 </head>
 <body>
@@ -209,7 +223,7 @@ input[type=text],input[type=password],input[type=date],input[type=time],input[ty
 <dialog id="rvDlg">
   <form method="dialog" id="rvForm">
     <b>Add revision reminders</b>
-    <p style="font-size:12px;color:var(--mute);margin:6px 0 0">Enter what you studied. The app adds a revision to-do on each future day you choose.</p>
+    <p style="font-size:12px;color:var(--mute);margin:6px 0 0">Use this right after you finish studying a topic or chapter. Enter the topic and the day you studied it, and the app adds a "Revise" to-do on each later day you choose (default: 1, 7 and 21 days later). Tick them off as you revise.</p>
     <label>Topic studied</label><input type="text" id="rvTopic" required placeholder="e.g. Time of Supply">
     <label>Paper (optional)</label><select id="rvSub"></select>
     <label>Date you studied it</label><input type="date" id="rvDate" required>
@@ -352,7 +366,8 @@ const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 
 const isDl=e=>e.kind==='deadline';
 const label=e=>(((e.emoji?e.emoji+' ':'')+(e.title||'')).trim())||'(untitled)';
-const evsOn=d=>db.events.filter(e=>e.date===d).sort((a,b)=>(isDl(b)-isDl(a))||(a.start||'').localeCompare(b.start||''));
+const cmpTime=(a,b)=>(a.start||'').localeCompare(b.start||'')||(a.end||'').localeCompare(b.end||'')||String(a.title||a.name||'').localeCompare(String(b.title||b.name||''));
+const evsOn=d=>db.events.filter(e=>e.date===d).sort(cmpTime);
 const todosOn=d=>db.todos.filter(t=>t.date===d).sort((a,b)=>a.done-b.done);
 
 /* ---------- projects ---------- */
@@ -369,6 +384,20 @@ function weekRange(p,w){
   let to=addDays(from,6);if(to>last)to=last;
   return[from,to];
 }
+/* project timings: p.sess[date]={s:'18:00',e:'20:00'}; ticks live in db.pw under 'projectId:d:date' */
+const PCOL=['#6a4fb0','#2f7f9e','#a0602a','#4a7f3a','#b04a6a','#7a7a2a'];
+const pColor=p=>PCOL[Math.max(0,db.projects.indexOf(p))%PCOL.length];
+const sessKey=(p,k)=>p.id+':d:'+k;
+function sessionsOn(k){
+  const out=[];
+  db.projects.forEach(p=>{
+    const x=p.sess&&p.sess[k];if(!x||!x.s)return;
+    const pw=projWeekOf(p,k);if(!pw)return;
+    out.push({kind:'session',pid:p.id,name:p.name,emoji:p.emoji||'📘',date:k,start:x.s,end:x.e||'',week:pw.w,total:pw.total,key:sessKey(p,k),done:!!db.pw[sessKey(p,k)],col:pColor(p)});
+  });
+  return out.sort(cmpTime);
+}
+const agendaOn=k=>db.events.filter(e=>e.date===k).concat(sessionsOn(k)).sort(cmpTime);
 function projLinesForDays(a,b){
   let h='';
   db.projects.forEach(p=>{
@@ -389,41 +418,86 @@ function evHtml(e){
   return `<div class="ev ${dl&&e.done?'dn':''}" style="background:${col}" data-a="editEv" data-id="${e.id}">${chk}${(dl&&!e.emoji)?'🎯 ':''}${t}<span>${esc(label(e))}${e.seriesId?' 🔁':''}</span>${(!dl&&e.rem!==''&&e.rem!=null)?' 🔔':''}</div>`;
 }
 function chipHtml(e,mode){
-  const dl=isDl(e),done=dl&&e.done;
-  if(mode==='emoji')return `<span class="emo ${done?'dn':''}" title="${esc(label(e))}">${esc(e.emoji||(dl?'🎯':'•'))}</span>`;
-  return `<span class="chip ${done?'dn':''}" style="background:${dl?'var(--warn)':(CATS[e.cat]||CATS.General)}">${(dl&&!e.emoji)?'🎯 ':''}${esc(label(e))}</span>`;
+  const dl=isDl(e),done=dl&&e.done,col=dl?'var(--warn)':(CATS[e.cat]||CATS.General);
+  if(mode==='emoji'){const inner=e.emoji?esc(e.emoji):(dl?'🎯':`<i class="edot" style="background:${col}"></i>`);return `<span class="emo ${done?'dn':''}" title="${esc(label(e))}">${inner}</span>`}
+  return `<span class="chip ${done?'dn':''}" style="background:${col}">${e.start?`<b>${e.start}</b> `:''}${(dl&&!e.emoji)?'🎯 ':''}${esc(label(e))}</span>`;
 }
+function sessHtml(x){
+  return `<div class="ev ${x.done?'dn':''}" style="background:${x.col}" data-a="goProj" data-id="${x.pid}" data-w="${x.week}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}" aria-label="Done"><small>${x.start}${x.end?'–'+x.end:''}</small><span>${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week}</span></div>`;
+}
+function sessTodoHtml(x){
+  return `<div class="todo ${x.done?'done':''}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}"><span data-a="goProj" data-id="${x.pid}" data-w="${x.week}">${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week} · ${x.start}${x.end?'–'+x.end:''}</span></div>`;
+}
+const agendaHtml=k=>agendaOn(k).map(x=>x.kind==='session'?sessHtml(x):evHtml(x)).join('');
 function todoHtml(t){
   return `<div class="todo ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} data-a="tog" data-id="${t.id}"><span data-a="editTodo" data-id="${t.id}">${esc(t.text)}${t.seriesId?' 🔁':''}</span><button class="x" data-a="delTodo" data-id="${t.id}" aria-label="Delete">✕</button></div>`;
 }
 function todoBlock(d){
-  return todosOn(d).map(todoHtml).join('')+`<input class="add" data-add="${d}" placeholder="+ add to-do, press Enter">`;
+  return sessionsOn(d).map(sessTodoHtml).join('')+todosOn(d).map(todoHtml).join('')+`<input class="add" data-add="${d}" placeholder="+ add to-do, press Enter">`;
 }
 function noteBox(k,ph){return `<textarea data-note="${k}" placeholder="${ph}">${esc(getNote(k))}</textarea>`}
 
 /* ---------- views ---------- */
-function renderMonth(){
-  const y=cur.getFullYear(),m=cur.getMonth(),mode=localStorage.getItem('planner.mmode')||'full';
-  $('#title').textContent=`${MON[m]} ${y}`;
+const monthDays=(y,m)=>{const n=new Date(y,m+1,0).getDate(),o=[];for(let d=1;d<=n;d++)o.push(ds(new Date(y,m,d)));return o};
+const dayLabel=k=>{const d=parse(k);return `${DOW[(d.getDay()+6)%7]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}`};
+function monthGrid(y,m){
   const start=monday(new Date(y,m,1)),t=ds(today());
-  let h=`<div class="row" style="margin-bottom:8px"><button class="btn" data-a="mmode">${mode==='full'?'Show emoji only':'Show full text'}</button><small style="color:var(--mute)">Boxes grow to fit everything. Tap a day to open it.</small></div>`;
-  h+='<div class="mgrid">'+DOW.map(d=>`<div class="dow">${d}</div>`).join('');
+  let h='<div class="mgrid">'+DOW.map(d=>`<div class="dow">${d}</div>`).join('');
   for(let i=0;i<42;i++){
     const d=addDays(start,i),k=ds(d);
     if(i>=35&&d.getMonth()!==m)break;
-    const items=evsOn(k),td=todosOn(k),open=td.filter(x=>!x.done);
+    const ag=agendaOn(k),open=todosOn(k).filter(x=>!x.done),openN=open.length+sessionsOn(k).filter(x=>!x.done).length;
     let tags='';
     db.projects.forEach(p=>{const pw=projWeekOf(p,k);if(pw&&pw.day===1)tags+=`<span class="ptag">${esc(p.emoji||'📘')}W${pw.w}</span>`});
-    let body=items.map(e=>chipHtml(e,mode)).join('');
-    if(mode==='emoji')body=`<div class="emos">${body}</div>`;
-    if(td.length){
-      body+=mode==='full'
-        ?open.map(x=>`<div class="mtd">☐ ${esc(x.text)}</div>`).join('')+(td.length-open.length?`<div class="cnt">✔ ${td.length-open.length} done</div>`:'')
-        :`<div class="cnt">☑ ${open.length}</div>`;
-    }
-    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span>${DOW[i%7]} ${d.getDate()}</span>${tags}</div>${body}</div>`;
+    const icons=ag.slice(0,6).map(x=>x.kind==='session'?`<span class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`:chipHtml(x,'emoji')).join('')+(ag.length>6?`<span class="cnt">+${ag.length-6}</span>`:'');
+    const chips=ag.map(x=>x.kind==='session'?`<span class="chip ${x.done?'dn':''}" style="background:${x.col}"><b>${x.start}</b> ${esc(x.emoji)} ${esc(x.name)}</span>`:chipHtml(x,'full')).join('');
+    const todos=open.map(x=>`<div class="mtd">☐ ${esc(x.text)}</div>`).join('');
+    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span>${DOW[i%7]} ${d.getDate()}</span>${tags}</div><div class="nar"><div class="emos">${icons}</div>${openN?`<div class="cnt">☐ ${openN}</div>`:''}</div><div class="wid">${chips}${todos}</div></div>`;
   }
-  h+='</div>';
+  return h+'</div><p class="hint">Tap a day to open it. Use the buttons above for full lists.</p>';
+}
+function monthSched(y,m){
+  const t=ds(today());let out='';
+  monthDays(y,m).forEach(k=>{
+    const ag=agendaHtml(k);if(!ag)return;
+    out+=`<div class="lcard"><div class="dayhdr ${k===t?'today':''}" data-a="goDay" data-d="${k}">${dayLabel(k)}${k===t?' · today':''}</div>${ag}</div>`;
+  });
+  return out||'<p class="hint">Nothing scheduled this month.</p>';
+}
+function monthTodo(y,m){
+  const t=ds(today());let out='',open=0,done=0;
+  monthDays(y,m).forEach(k=>{
+    const ss=sessionsOn(k),ts=todosOn(k);if(!ss.length&&!ts.length)return;
+    ss.concat(ts).forEach(x=>{if(x.done)done++;else open++});
+    out+=`<div class="lcard"><div class="dayhdr ${k===t?'today':''}" data-a="goDay" data-d="${k}">${dayLabel(k)}${k===t?' · today':''}</div>${ss.map(sessTodoHtml).join('')}${ts.map(todoHtml).join('')}</div>`;
+  });
+  return (out?`<p class="hint">${open} open · ${done} done this month</p>`:'')+(out||'<p class="hint">No to-dos this month.</p>');
+}
+function monthProj(y,m){
+  const days=monthDays(y,m),first=days[0],last=days[days.length-1];let out='';
+  db.projects.forEach(p=>{
+    const pe=ds(addDays(projEnd(p),-1));
+    if(p.start>last||pe<first)return;
+    const from=p.start>first?p.start:first,to=pe<last?pe:last;
+    const wa=projWeekOf(p,from).w,wb=projWeekOf(p,to).w;
+    let weeks='';
+    for(let w=wa;w<=wb;w++){
+      const [x,z]=weekRange(p,w),key=p.id+':'+w,note=getNote('p:'+key);
+      weeks+=`<div class="pwk"><div class="row"><b>Week ${w}</b><small>${fmtShort(x)} – ${fmtShort(z)}</small>${db.pw[key]?'<span>✔</span>':''}</div>${note?`<div class="prev" style="margin-left:0">${esc(note.split('\n')[0].slice(0,80))}</div>`:''}</div>`;
+    }
+    const ss=days.flatMap(k=>sessionsOn(k).filter(x=>x.pid===p.id));
+    const rows=ss.map(x=>`<div class="todo ${x.done?'done':''}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}"><span data-a="goDay" data-d="${x.date}">${dayLabel(x.date)} · ${x.start}${x.end?'–'+x.end:''}</span></div>`).join('');
+    out+=`<div class="lcard"><div class="row"><b class="grow">${esc(p.emoji||'📘')} ${esc(p.name)}</b><small>Week ${wa}${wb>wa?' – '+wb:''} of ${projWeeks(p)}</small><button class="btn" data-a="goProj" data-id="${p.id}" data-w="${wa}">Open</button></div>${weeks}<div style="margin-top:6px"><b style="font-size:13px">Scheduled days this month</b></div>${rows||'<p class="hint">No daily timings set. Open the project to choose them.</p>'}</div>`;
+  });
+  return out||'<p class="hint">No project runs in this month.</p>';
+}
+function renderMonth(){
+  const y=cur.getFullYear(),m=cur.getMonth();
+  $('#title').textContent=`${MON[m]} ${y}`;
+  const mode=localStorage.getItem('planner.mm')||'over';
+  const MM=[['over','🔭 Overview'],['sched','Schedule & deadlines'],['todo','To-do lists'],['proj','Projects']];
+  let h=`<div class="seg">${MM.map(([k,l])=>`<button class="${mode===k?'on':''}" data-a="mm" data-m="${k}">${esc(l)}</button>`).join('')}</div>`;
+  h+=mode==='sched'?monthSched(y,m):mode==='todo'?monthTodo(y,m):mode==='proj'?monthProj(y,m):monthGrid(y,m);
   h+=`<div class="sec"><h2>Month goals &amp; notes</h2>${noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}</div>`;
   return h;
 }
@@ -434,10 +508,10 @@ function renderWeek(){
   for(let i=0;i<7;i++){
     const d=addDays(s,i),k=ds(d);
     h+=`<div class="card ${k===t?'today':''}"><h3 data-a="goDay" data-d="${k}">${DOW[i]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}</h3>`+
-      evsOn(k).map(evHtml).join('')+
+      agendaHtml(k)+
       `<button class="add" data-a="newEv" data-d="${k}">+ event / deadline</button><div style="margin-top:8px">${todoBlock(k)}</div></div>`;
   }
-    h+='</div>';
+  h+='</div>';
   return h;
 }
 function renderDay(){
@@ -449,26 +523,43 @@ function renderDay(){
   const pl=projLinesForDays(k,k);
   if(pl)h+=`<div class="card" style="margin-bottom:10px">${db.projects.map(p=>{const w=projWeekOf(p,k);return w?`<div class="pline">${esc(p.emoji||'📘')} ${esc(p.name)} · Week ${w.w} of ${w.total} · Day ${w.day}</div>`:''}).join('')}</div>`;
   h+=`<div class="card"><div class="row"><b class="grow">Schedule &amp; deadlines</b><button class="btn pri" data-a="newEv" data-d="${k}">+ Add</button></div>`+
-    (evsOn(k).map(evHtml).join('')||'<p style="color:var(--mute)">Nothing scheduled.</p>')+`</div>`;
+    (agendaHtml(k)||'<p style="color:var(--mute)">Nothing scheduled.</p>')+`</div>`;
   h+=`<div class="card sec"><div class="row"><b class="grow">To-do</b><button class="btn" data-a="newRepTodo" data-d="${k}">🔁 Repeating to-do</button><button class="btn" data-a="newRev" data-d="${k}">🧠 Revision</button>${carry?`<button class="btn" data-a="carry">Carry over ${carry} from yesterday</button>`:''}</div>${todoBlock(k)}</div>`;
   h+=`<div class="sec"><h2>Day notes</h2>${noteBox('d:'+k,'Notes, study log, thoughts for today…')}</div>`;
   return h;
 }
 function wkState(){try{return JSON.parse(localStorage.getItem('planner.wk')||'{}')}catch(e){return{}}}
 function isWkOpen(key,now){const s=wkState();return key in s?!!s[key]:now}
+function pjState(){try{return JSON.parse(localStorage.getItem('planner.pj')||'{}')}catch(e){return{}}}
+function isPjOpen(id,active){const s=pjState();return id in s?!!s[id]:active}
 function renderProjects(){
   $('#title').textContent='Projects';
   const t=ds(today());
   let h=`<div class="row"><button class="btn pri" data-a="newProj">+ New project</button></div>`;
-  if(!db.projects.length)h+=`<p style="color:var(--mute)">Add a project with a start date and a length in weeks or months. Weeks are named and numbered automatically from day 1.</p>`;
+  if(!db.projects.length)h+=`<p style="color:var(--mute)">Add a project with a start date and a length in weeks or months. Weeks are numbered automatically from day 1. Then choose the time you will work on it each day, and it appears in your Day, Week and Month planner.</p>`;
   db.projects.forEach(p=>{
-    const tot=projWeeks(p);
-    h+=`<div class="card sec"><div class="row"><b class="grow">${esc(p.emoji||'📘')} ${esc(p.name)}</b><small style="color:var(--mute)">${fmtShort(parse(p.start))} → ${fmtShort(addDays(projEnd(p),-1))} · ${tot} weeks</small><button class="btn" data-a="wkAll" data-id="${p.id}" data-v="1">Expand all</button><button class="btn" data-a="wkAll" data-id="${p.id}" data-v="0">Collapse all</button><button class="btn" data-a="editProj" data-id="${p.id}">Edit</button></div>`;
-    for(let w=1;w<=tot;w++){
-      const [a,b]=weekRange(p,w),now=t>=ds(a)&&t<=ds(b),key=p.id+':'+w;
-      const isOpen=isWkOpen(key,now),note=getNote('p:'+key);
-      h+=`<div class="pwk ${now?'now':''}"><div class="row wkhead" data-a="togWk" data-key="${key}" data-now="${now?1:0}"><input type="checkbox" data-a="pwDone" data-key="${key}" ${db.pw[key]?'checked':''}><b>Week ${w}</b><small>${fmtShort(a)} – ${fmtShort(b)}${now?' · this week':''}</small><span class="grow"></span><span class="chev">${isOpen?'▾':'▸'}</span></div>`+
-        (isOpen?`<textarea data-note="p:${key}" placeholder="Goals / tasks / notes for week ${w}…">${esc(note)}</textarea>`:(note?`<div class="prev">${esc(note.split('\n')[0].slice(0,70))}</div>`:''))+`</div>`;
+    const tot=projWeeks(p),active=!!projWeekOf(p,t),open=isPjOpen(p.id,active);
+    const nSess=Object.keys(p.sess||{}).filter(k=>p.sess[k].s&&projWeekOf(p,k)).length;
+    h+=`<div class="card sec"><div class="row wkhead" data-a="togPj" data-id="${p.id}"><span class="chev">${open?'▾':'▸'}</span><b class="grow">${esc(p.emoji||'📘')} ${esc(p.name)}</b><small style="color:var(--mute)">${fmtShort(parse(p.start))} → ${fmtShort(addDays(projEnd(p),-1))} · ${tot} wk · ${nSess} day(s) scheduled</small><button class="btn" data-a="editProj" data-id="${p.id}">Edit</button></div>`;
+    if(open){
+      h+=`<div class="row" style="margin-top:8px"><button class="btn" data-a="wkAll" data-id="${p.id}" data-v="1">Expand all weeks</button><button class="btn" data-a="wkAll" data-id="${p.id}" data-v="0">Collapse all weeks</button></div>`;
+      h+=`<div class="patbox"><b style="font-size:13px">Usual weekly timings</b><div class="hint" style="margin:2px 0 6px">Set the times you will work on this project on each weekday, then fill every week. You can still change any single day inside a week.</div>`+
+        DOW.map((d,i)=>{const x=(p.pat&&p.pat[i])||{};return `<div class="srow"><span class="d">${d}</span><input type="time" data-pat="${p.id}|${i}|s" value="${x.s||''}"><span>–</span><input type="time" data-pat="${p.id}|${i}|e" value="${x.e||''}"></div>`}).join('')+
+        `<button class="btn pri" style="margin-top:6px" data-a="patAll" data-id="${p.id}">Fill all weeks from this</button></div>`;
+      for(let w=1;w<=tot;w++){
+        const [a,b]=weekRange(p,w),now=t>=ds(a)&&t<=ds(b),key=p.id+':'+w;
+        const isOpen=isWkOpen(key,now),note=getNote('p:'+key);
+        h+=`<div class="pwk ${now?'now':''}"><div class="row wkhead" data-a="togWk" data-key="${key}" data-now="${now?1:0}"><input type="checkbox" data-a="pwDone" data-key="${key}" ${db.pw[key]?'checked':''}><b>Week ${w}</b><small>${fmtShort(a)} – ${fmtShort(b)}${now?' · this week':''}</small><span class="grow"></span><span class="chev">${isOpen?'▾':'▸'}</span></div>`;
+        if(isOpen){
+          let rows='';
+          for(let d=new Date(a);d<=b;d=addDays(d,1)){
+            const k=ds(d),x=(p.sess&&p.sess[k])||{};
+            rows+=`<div class="srow"><span class="d">${dayLabel(k)}</span><input type="time" data-sess="${p.id}|${k}|s" value="${x.s||''}"><span>–</span><input type="time" data-sess="${p.id}|${k}|e" value="${x.e||''}"></div>`;
+          }
+          h+=`<div class="hint" style="margin:6px 0 2px">Daily timings for this week (leave blank for no session)</div>${rows}<button class="btn" style="margin:4px 0" data-a="patWeek" data-id="${p.id}" data-w="${w}">Fill this week from usual timings</button><textarea data-note="p:${key}" placeholder="Goals / tasks / notes for week ${w}…">${esc(note)}</textarea>`;
+        }else if(note)h+=`<div class="prev">${esc(note.split('\n')[0].slice(0,70))}</div>`;
+        h+='</div>';
+      }
     }
     h+='</div>';
   });
@@ -593,11 +684,11 @@ function repeatHtml(p){
 <select id="${p}Freq"><option value="none">Doesn't repeat</option><option value="daily">Every day</option><option value="weekdays">On selected weekdays</option><option value="monthly">Every month (same date)</option></select>
 <div id="${p}Wd" class="wdrow" style="display:none">${DOW.map((d,i)=>`<label><input type="checkbox" value="${i}">${d}</label>`).join('')}</div>
 <div id="${p}EndBox" style="display:none"><label>Repeat ends</label>
-<select id="${p}End"><option value="date">On a date</option><option value="count">After a number of times</option><option value="project">When a project ends</option></select>
+<select id="${p}EndKind"><option value="date">On a date</option><option value="count">After a number of times</option><option value="project">When a project ends</option></select>
 <input type="date" id="${p}EndDate"><input type="number" id="${p}EndCount" min="1" max="400" value="10" style="display:none"><select id="${p}EndProj" style="display:none"></select></div></div>`;
 }
 function syncRep(p){
-  const f=$('#'+p+'Freq').value,e=$('#'+p+'End').value;
+  const f=$('#'+p+'Freq').value,e=$('#'+p+'EndKind').value;
   $('#'+p+'Wd').style.display=f==='weekdays'?'flex':'none';
   $('#'+p+'EndBox').style.display=f==='none'?'none':'';
   $('#'+p+'EndDate').style.display=e==='date'?'':'none';
@@ -607,12 +698,12 @@ function syncRep(p){
 function wireRep(p){
   $('#'+p+'RepWrap').innerHTML=repeatHtml(p);
   $('#'+p+'Freq').addEventListener('change',()=>syncRep(p));
-  $('#'+p+'End').addEventListener('change',()=>syncRep(p));
+  $('#'+p+'EndKind').addEventListener('change',()=>syncRep(p));
 }
 function resetRep(p){
   $('#'+p+'Freq').value='none';
   document.querySelectorAll('#'+p+'Wd input').forEach(i=>i.checked=false);
-  $('#'+p+'End').value='date';$('#'+p+'EndDate').value='';$('#'+p+'EndCount').value=10;
+  $('#'+p+'EndKind').value='date';$('#'+p+'EndDate').value='';$('#'+p+'EndCount').value=10;
   $('#'+p+'EndProj').innerHTML=db.projects.map(x=>`<option value="${x.id}">${esc(x.emoji||'📘')} ${esc(x.name)}</option>`).join('');
   syncRep(p);
 }
@@ -621,7 +712,7 @@ function readRepeat(p,startDate){
   if(freq==='none')return null;
   let days=[...document.querySelectorAll('#'+p+'Wd input:checked')].map(i=>Number(i.value));
   if(freq==='weekdays'&&!days.length)days=[(parse(startDate).getDay()+6)%7];
-  const end=$('#'+p+'End').value;let until=null,count=null;
+  const end=$('#'+p+'EndKind').value;let until=null,count=null;
   if(end==='date'){until=$('#'+p+'EndDate').value;if(!until)return{error:'Choose the date the repeat ends.'}}
   else if(end==='count')count=Math.max(1,Math.min(400,Number($('#'+p+'EndCount').value)||1));
   else{
@@ -965,6 +1056,27 @@ document.addEventListener('click',e=>{
   }
   else if(a==='logStudy')openLog();
   else if(a==='newRev')openRev(t.dataset.d);
+  else if(a==='mm'){localStorage.setItem('planner.mm',t.dataset.m);render()}
+  else if(a==='pdone'){const k=t.dataset.key;if(t.checked)db.pw[k]=true;else delete db.pw[k];touch('w:'+k);save();render()}
+  else if(a==='togPj'){const st=pjState(),id=t.dataset.id,p=db.projects.find(z=>z.id===id);const cur=(id in st)?st[id]:!!(p&&projWeekOf(p,ds(today())));st[id]=!cur;localStorage.setItem('planner.pj',JSON.stringify(st));render()}
+  else if(a==='goProj'){
+    const id=t.dataset.id,w=t.dataset.w;view='projects';localStorage.setItem('planner.view',view);
+    const st=pjState();st[id]=true;localStorage.setItem('planner.pj',JSON.stringify(st));
+    if(w){const ws=wkState();ws[id+':'+w]=true;localStorage.setItem('planner.wk',JSON.stringify(ws))}
+    render();window.scrollTo(0,0);
+  }
+  else if(a==='patAll'||a==='patWeek'){
+    const p=db.projects.find(z=>z.id===t.dataset.id);if(!p)return;
+    if(!Object.values(p.pat||{}).some(x=>x&&x.s)){alert('Set a start time for at least one weekday in "Usual weekly timings" first.');return}
+    let from,to;
+    if(a==='patAll'){
+      if(!confirm('Fill every week from the usual timings? Days you set by hand will be overwritten.'))return;
+      from=parse(p.start);to=addDays(projEnd(p),-1);
+    }else{[from,to]=weekRange(p,Number(t.dataset.w))}
+    p.sess=p.sess||{};
+    for(let d=new Date(from);d<=to;d=addDays(d,1)){const k=ds(d),pt=p.pat&&p.pat[(d.getDay()+6)%7];if(pt&&pt.s)p.sess[k]={s:pt.s,e:pt.e||''};else delete p.sess[k]}
+    save();render();
+  }
   else if(a==='newProj')openProj(null);
   else if(a==='editProj')openProj(t.dataset.id);
   else if(a==='pwDone'){if(t.checked)db.pw[t.dataset.key]=true;else delete db.pw[t.dataset.key];touch('w:'+t.dataset.key);save()}
@@ -999,7 +1111,18 @@ document.addEventListener('keydown',e=>{
     const n=document.querySelector(`[data-add="${i.dataset.add}"]`);n&&n.focus();
   }
 });
-document.addEventListener('change',e=>{const i=e.target.closest&&e.target.closest('[data-meta]');if(i){db.meta[i.dataset.meta]=i.value;touch('m:'+i.dataset.meta);save(true);render()}});
+document.addEventListener('change',e=>{
+  const ti=e.target.closest&&e.target.closest('[data-sess],[data-pat]');
+  if(ti){
+    const isS=!!ti.dataset.sess,[pid,key,f]=(ti.dataset.sess||ti.dataset.pat).split('|'),p=db.projects.find(x=>x.id===pid);
+    if(!p)return;
+    const box=isS?(p.sess=p.sess||{}):(p.pat=p.pat||{});
+    const cur=Object.assign({},box[key]);cur[f]=ti.value;
+    if(f==='e'&&cur.s&&cur.e&&cur.e<=cur.s){alert('End time must be after the start time.');ti.value='';cur.e=''}
+    if(!cur.s&&!cur.e)delete box[key];else box[key]=cur;
+    save();return;
+  }
+  const i=e.target.closest&&e.target.closest('[data-meta]');if(i){db.meta[i.dataset.meta]=i.value;touch('m:'+i.dataset.meta);save(true);render()}});
 let nt;
 document.addEventListener('input',e=>{
   const n=e.target.closest&&e.target.closest('[data-note]');
