@@ -109,6 +109,31 @@ input[type=text],input[type=password],input[type=date],input[type=time],input[ty
 .repbox input[type=date],.repbox input[type=number],.repbox select{margin-top:6px}
 @media (max-width:760px){.wgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){.cell{min-height:80px;padding:3px}.cell .n{font-size:10px}.cell .n>span:first-child{white-space:nowrap}.dow{font-size:11px;padding:3px 0}.chip{font-size:10px;padding:1px 3px}#title{min-width:0;font-size:14px}.tabs button{padding:6px 7px;font-size:13px}.mtd{font-size:10px}.ev{font-size:12px}}
+
+.banner{padding:5px 10px;margin-bottom:6px;font-size:12px}
+.mgrid.fit{height:var(--gridH,520px);gap:3px}
+.mgrid.fit .cell{min-height:0;overflow:hidden;padding:3px 4px}
+.mgrid.fit .cell .n{font-size:11px;flex-wrap:nowrap}
+.mgrid.fit .cell .n>span:first-child{white-space:nowrap}
+.mgrid.fit .chip{font-size:11px;padding:1px 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mgrid.fit .mtd{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.seg .sm{display:none}
+@media (max-width:560px){.seg .lg{display:none}.seg .sm{display:inline}.seg{flex-wrap:nowrap}.seg button{padding:6px 10px}}
+.wgrid.fit{height:var(--gridH,520px);grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(5,minmax(0,1fr));gap:6px}
+.wgrid.fit .card{min-height:0;overflow:auto;padding:6px 7px;display:flex;flex-direction:column}
+.wgrid.fit .card.plan,.wgrid.fit .card.sun{grid-column:1/-1}
+.wgrid.fit .card.plan textarea{flex:1;min-height:0;resize:none;padding:6px}
+.wgrid.fit .card h3{margin:0;font-size:13px}
+.wgrid.fit .ev{font-size:11.5px;padding:3px 5px;margin:2px 0}
+.wgrid.fit .todo{font-size:12px;padding:1px 0;gap:5px}
+.wgrid.fit .todo input{width:15px;height:15px;margin-top:2px}
+.wgrid.fit .todo .x{display:none}
+.wgrid.fit .pline{font-size:11px;padding:2px 6px;margin:2px 0}
+.mini{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:0 7px;font-size:14px;line-height:22px;cursor:pointer;flex:none}
+@media (min-width:700px){.wgrid.fit{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))}.wgrid.fit .card.sun{grid-column:span 2}}
+@media (min-width:1100px){.wgrid.fit{grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:minmax(90px,.45fr) minmax(0,1fr)}.wgrid.fit .card.sun{grid-column:auto}}
+.pt-w{display:none}.pt-n{margin-top:1px;line-height:1.2}
+@media (min-width:700px){.pt-w{display:inline}}
 </style>
 </head>
 <body>
@@ -419,8 +444,8 @@ function evHtml(e){
 }
 function chipHtml(e,mode){
   const dl=isDl(e),done=dl&&e.done,col=dl?'var(--warn)':(CATS[e.cat]||CATS.General);
-  if(mode==='emoji'){const inner=e.emoji?esc(e.emoji):(dl?'🎯':`<i class="edot" style="background:${col}"></i>`);return `<span class="emo ${done?'dn':''}" title="${esc(label(e))}">${inner}</span>`}
-  return `<span class="chip ${done?'dn':''}" style="background:${col}">${e.start?`<b>${e.start}</b> `:''}${(dl&&!e.emoji)?'🎯 ':''}${esc(label(e))}</span>`;
+  if(mode==='emoji'){const inner=e.emoji?esc(e.emoji):(dl?'🎯':`<i class="edot" style="background:${col}"></i>`);return `<span data-it class="emo ${done?'dn':''}" title="${esc(label(e))}">${inner}</span>`}
+  return `<span data-it class="chip ${done?'dn':''}" style="background:${col}">${e.start?`<b>${e.start}</b> `:''}${(dl&&!e.emoji)?'🎯 ':''}${esc(label(e))}</span>`;
 }
 function sessHtml(x){
   return `<div class="ev ${x.done?'dn':''}" style="background:${x.col}" data-a="goProj" data-id="${x.pid}" data-w="${x.week}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}" aria-label="Done"><small>${x.start}${x.end?'–'+x.end:''}</small><span>${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week}</span></div>`;
@@ -441,20 +466,20 @@ function noteBox(k,ph){return `<textarea data-note="${k}" placeholder="${ph}">${
 const monthDays=(y,m)=>{const n=new Date(y,m+1,0).getDate(),o=[];for(let d=1;d<=n;d++)o.push(ds(new Date(y,m,d)));return o};
 const dayLabel=k=>{const d=parse(k);return `${DOW[(d.getDay()+6)%7]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}`};
 function monthGrid(y,m){
-  const start=monday(new Date(y,m,1)),t=ds(today());
-  let h='<div class="mgrid">'+DOW.map(d=>`<div class="dow">${d}</div>`).join('');
-  for(let i=0;i<42;i++){
+  const first=new Date(y,m,1),start=monday(first),t=ds(today());
+  const R=Math.ceil(((first.getDay()+6)%7+new Date(y,m+1,0).getDate())/7);
+  let h=`<div class="mgrid fit" style="grid-template-rows:auto repeat(${R},minmax(0,1fr))">`+DOW.map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<R*7;i++){
     const d=addDays(start,i),k=ds(d);
-    if(i>=35&&d.getMonth()!==m)break;
     const ag=agendaOn(k),open=todosOn(k).filter(x=>!x.done),openN=open.length+sessionsOn(k).filter(x=>!x.done).length;
     let tags='';
     db.projects.forEach(p=>{const pw=projWeekOf(p,k);if(pw&&pw.day===1)tags+=`<span class="ptag">${esc(p.emoji||'📘')}W${pw.w}</span>`});
-    const icons=ag.slice(0,6).map(x=>x.kind==='session'?`<span class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`:chipHtml(x,'emoji')).join('')+(ag.length>6?`<span class="cnt">+${ag.length-6}</span>`:'');
-    const chips=ag.map(x=>x.kind==='session'?`<span class="chip ${x.done?'dn':''}" style="background:${x.col}"><b>${x.start}</b> ${esc(x.emoji)} ${esc(x.name)}</span>`:chipHtml(x,'full')).join('');
-    const todos=open.map(x=>`<div class="mtd">☐ ${esc(x.text)}</div>`).join('');
-    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span>${DOW[i%7]} ${d.getDate()}</span>${tags}</div><div class="nar"><div class="emos">${icons}</div>${openN?`<div class="cnt">☐ ${openN}</div>`:''}</div><div class="wid">${chips}${todos}</div></div>`;
+    const icons=ag.map(x=>x.kind==='session'?`<span data-it class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`:chipHtml(x,'emoji')).join('');
+    const chips=ag.map(x=>x.kind==='session'?`<span data-it class="chip ${x.done?'dn':''}" style="background:${x.col}"><b>${x.start}</b> ${esc(x.emoji)} ${esc(x.name)}</span>`:chipHtml(x,'full')).join('');
+    const todos=open.map(x=>`<div data-it class="mtd">☐ ${esc(x.text)}</div>`).join('');
+    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span>${DOW[i%7]} ${d.getDate()}</span><span class="pt-w">${tags}</span></div><div class="nar">${tags?`<div data-it class="pt-n">${tags}</div>`:''}<div class="emos">${icons}</div>${openN?`<div class="cnt">☐ ${openN}</div>`:''}</div><div class="wid">${chips}${todos}</div></div>`;
   }
-  return h+'</div><p class="hint">Tap a day to open it. Use the buttons above for full lists.</p>';
+  return h+'</div>';
 }
 function monthSched(y,m){
   const t=ds(today());let out='';
@@ -495,8 +520,8 @@ function renderMonth(){
   const y=cur.getFullYear(),m=cur.getMonth();
   $('#title').textContent=`${MON[m]} ${y}`;
   const mode=localStorage.getItem('planner.mm')||'over';
-  const MM=[['over','🔭 Overview'],['sched','Schedule & deadlines'],['todo','To-do lists'],['proj','Projects']];
-  let h=`<div class="seg">${MM.map(([k,l])=>`<button class="${mode===k?'on':''}" data-a="mm" data-m="${k}">${esc(l)}</button>`).join('')}</div>`;
+  const MM=[['over','🔭 Overview','🔭 Overview'],['sched','Schedule & deadlines','Schedule'],['todo','To-do lists','To-do'],['proj','Projects','Projects']];
+  let h=`<div class="seg">${MM.map(([k,l,sh])=>`<button class="${mode===k?'on':''}" data-a="mm" data-m="${k}"><span class="lg">${esc(l)}</span><span class="sm">${esc(sh)}</span></button>`).join('')}</div>`;
   h+=mode==='sched'?monthSched(y,m):mode==='todo'?monthTodo(y,m):mode==='proj'?monthProj(y,m):monthGrid(y,m);
   h+=`<div class="sec"><h2>Month goals &amp; notes</h2>${noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}</div>`;
   return h;
@@ -504,15 +529,13 @@ function renderMonth(){
 function renderWeek(){
   const s=monday(cur),e=addDays(s,6),t=ds(today());
   $('#title').textContent=`${s.getDate()} ${MON[s.getMonth()].slice(0,3)} – ${e.getDate()} ${MON[e.getMonth()].slice(0,3)} ${e.getFullYear()}`;
-  let h='<div class="wgrid">'+`<div class="card wide"><h3 style="cursor:default">Week plan &amp; notes</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}</div>`;
+  let h='<div class="wgrid fit">'+`<div class="card plan"><h3 style="cursor:default">Week plan &amp; notes</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}</div>`;
   for(let i=0;i<7;i++){
     const d=addDays(s,i),k=ds(d);
-    h+=`<div class="card ${k===t?'today':''}"><h3 data-a="goDay" data-d="${k}">${DOW[i]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}</h3>`+
-      agendaHtml(k)+
-      `<button class="add" data-a="newEv" data-d="${k}">+ event / deadline</button><div style="margin-top:8px">${todoBlock(k)}</div></div>`;
+    h+=`<div class="card ${k===t?'today':''} ${i===6?'sun':''}"><div class="row" style="flex-wrap:nowrap;gap:4px"><h3 class="grow" data-a="goDay" data-d="${k}">${DOW[i]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}</h3><button class="mini" data-a="qtodo" data-d="${k}" title="Add a to-do">☐+</button><button class="mini" data-a="newEv" data-d="${k}" title="Add an event or deadline">＋</button></div>`+
+      agendaHtml(k)+todosOn(k).map(todoHtml).join('')+`</div>`;
   }
-  h+='</div>';
-  return h;
+  return h+'</div>';
 }
 function renderDay(){
   const k=ds(cur);
@@ -659,12 +682,39 @@ function backupBanner(){
   if(days===null||days>=1)return `<div class="banner warn">${days===null?'No backup yet.':'Last backup '+days+' day(s) ago.'} Open <b>Backup</b> and download one.</div>`;
   return '';
 }
+function layoutFit(){
+  const g=document.querySelector('.fit');if(!g)return;
+  const top=g.getBoundingClientRect().top+window.scrollY;
+  g.style.setProperty('--gridH',Math.max(300,Math.floor(window.innerHeight-top-12))+'px');
+  if(g.classList.contains('mgrid'))fitCells();
+}
+function fitCells(){
+  document.querySelectorAll('.mgrid .cell').forEach(c=>{
+    c.querySelectorAll('.more').forEach(x=>x.remove());
+    c.querySelectorAll('[data-it]').forEach(x=>{x.style.display=''});
+    const box=[...c.querySelectorAll('.nar,.wid')].find(x=>getComputedStyle(x).display!=='none');if(!box)return;
+    const items=[...box.querySelectorAll('[data-it]')];
+    const over=()=>c.scrollHeight>c.clientHeight+1;
+    let hidden=0;
+    const hide=()=>{if(hidden>=items.length)return false;items[items.length-1-hidden].style.display='none';hidden++;return true};
+    while(over()&&hide());
+    if(hidden){
+      const cnt=box.querySelector('.cnt');let more;
+      if(cnt){more=document.createElement('span');more.className='more';cnt.appendChild(more)}
+      else{more=document.createElement('div');more.className='cnt more';box.appendChild(more)}
+      more.textContent=' +'+hidden;
+      while(over()&&hidden<items.length){hide();more.textContent=' +'+hidden}
+    }
+  });
+}
+let rzT;
+window.addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(()=>{const a=document.activeElement;if(a&&/^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName))return;layoutFit()},150)});
 function render(){
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=(view==='projects'||view==='study')?'none':'');
   let h=deadlineBanner()+streakBanner()+backupBanner();
   h+=view==='month'?renderMonth():view==='week'?renderWeek():view==='day'?renderDay():view==='projects'?renderProjects():renderStudy();
-  $('#app').innerHTML=h;updateStreakBtn();updateSyncBtn();
+  $('#app').innerHTML=h;updateStreakBtn();updateSyncBtn();layoutFit();
 }
 
 /* ---------- repeat helpers ---------- */
@@ -1056,6 +1106,7 @@ document.addEventListener('click',e=>{
   }
   else if(a==='logStudy')openLog();
   else if(a==='newRev')openRev(t.dataset.d);
+  else if(a==='qtodo'){const x=prompt('New to-do for '+dayLabel(t.dataset.d));if(x&&x.trim()){db.todos.push({id:uid(),date:t.dataset.d,text:x.trim(),done:false});save();render()}}
   else if(a==='mm'){localStorage.setItem('planner.mm',t.dataset.m);render()}
   else if(a==='pdone'){const k=t.dataset.key;if(t.checked)db.pw[k]=true;else delete db.pw[k];touch('w:'+k);save();render()}
   else if(a==='togPj'){const st=pjState(),id=t.dataset.id,p=db.projects.find(z=>z.id===id);const cur=(id in st)?st[id]:!!(p&&projWeekOf(p,ds(today())));st[id]=!cur;localStorage.setItem('planner.pj',JSON.stringify(st));render()}
