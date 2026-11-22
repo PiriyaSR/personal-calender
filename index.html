@@ -68,7 +68,7 @@ textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:8
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);width:min(440px,94vw);padding:16px;max-height:92vh;overflow:auto}
 dialog::backdrop{background:#0006}
 label{display:block;font-size:12px;color:var(--mute);margin-top:10px}
-input[type=text],input[type=date],input[type=time],input[type=number],select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+input[type=text],input[type=password],input[type=date],input[type=time],input[type=number],select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .emrow{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
 .emrow button{font-size:20px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:2px 6px;cursor:pointer}
@@ -82,6 +82,13 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
 .bar i{display:block;height:100%;background:var(--accent);border-radius:6px}
 .dots{display:flex;gap:4px;margin:8px 0}.dot{width:18px;height:18px;border-radius:5px;background:var(--line)}.dot.on{background:var(--accent)}
 #streakBtn{font-weight:700}
+#syncBtn{display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 9px}
+.sdot{width:10px;height:10px;border-radius:50%;background:#9aa5a0;display:inline-block;flex:none}
+#syncBtn[data-s=ok] .sdot{background:#2e9e5b}
+#syncBtn[data-s=busy] .sdot{background:#3b6fb6;animation:pulse 1s infinite}
+#syncBtn[data-s=pending] .sdot{background:#e0a030}
+#syncBtn[data-s=err] .sdot{background:#c0392b}
+@keyframes pulse{50%{opacity:.25}}
 .wdrow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .wdrow label{display:flex;align-items:center;gap:4px;margin:0;font-size:13px;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:4px 8px}
 .repbox{border-top:1px solid var(--line);margin-top:12px;padding-top:2px}
@@ -92,8 +99,9 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
 </head>
 <body>
 <header>
-  <div class="row">
-    <h1 class="grow">My Planner</h1>
+  <div class="row" style="flex-wrap:nowrap">
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner</h1>
+    <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
   </div>
@@ -253,23 +261,28 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
     <button class="btn" data-a="import">Restore from file</button>
   </div>
   <div class="row" style="margin-top:8px">
+    <button class="btn" data-a="shareBackup">Save backup to Drive…</button>
+  </div>
+  <div class="row" style="margin-top:8px">
     <button class="btn" data-a="notif">Enable reminders</button>
   </div>
   <div class="repbox" style="margin-top:14px">
-    <b>Google backup &amp; sync</b>
+    <b>Automatic sync &amp; backup (private GitHub repo)</b>
     <p id="gStatus" style="font-size:13px;margin:6px 0">Not connected.</p>
-    <label>Google Client ID (from your Google Cloud setup)</label>
-    <input type="text" id="gCid" placeholder="123456789-abc.apps.googleusercontent.com" autocomplete="off" autocapitalize="off">
+    <label>Your private repo, as username/repo-name</label>
+    <input type="text" id="gRepo" placeholder="yourname/planner-data" autocomplete="off" autocapitalize="off">
+    <label>GitHub token (fine-grained, Contents: read and write on that repo only)</label>
+    <input type="password" id="gToken" placeholder="github_pat_…" autocomplete="off">
     <div class="row" style="margin-top:8px">
-      <button class="btn pri" data-a="gConnect">Connect Google</button>
+      <button class="btn pri" data-a="gConnect">Connect</button>
       <button class="btn" data-a="gSync">Sync now</button>
       <button class="btn" data-a="gSnaps">Restore a daily backup</button>
       <button class="btn del" data-a="gOff">Disconnect</button>
     </div>
     <div id="gSnapBox" style="display:none;margin-top:8px"><select id="gSnapSel"></select><button class="btn" style="margin-top:8px" data-a="gSnapGo">Restore this day</button></div>
-    <p style="color:var(--mute);font-size:12px;margin:8px 0 0">When connected, your data syncs to the Google account you pick, in a private app folder (not visible in Drive's file list). A copy of each day is kept for 30 days.</p>
+    <p style="color:var(--mute);font-size:12px;margin:8px 0 0">When connected, your data syncs to that private repo on your GitHub account. A copy of each day is kept for 30 days, and GitHub also keeps the full change history. The token is stored only in this browser.</p>
   </div>
-  <p style="color:var(--mute);font-size:12px">Without Google connected, your data lives only on this device, so download a backup regularly.</p>
+  <p style="color:var(--mute);font-size:12px">Without sync connected, your data lives only on this device, so save a backup regularly.</p>
   <div class="row"><span class="grow"></span><button class="btn" data-a="closeBk">Close</button></div>
   <input type="file" id="file" accept="application/json" hidden>
 </dialog>
@@ -560,7 +573,7 @@ function render(){
   document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=(view==='projects'||view==='study')?'none':'');
   let h=deadlineBanner()+streakBanner()+backupBanner();
   h+=view==='month'?renderMonth():view==='week'?renderWeek():view==='day'?renderDay():view==='projects'?renderProjects():renderStudy();
-  $('#app').innerHTML=h;updateStreakBtn();
+  $('#app').innerHTML=h;updateStreakBtn();updateSyncBtn();
 }
 
 /* ---------- repeat helpers ---------- */
@@ -895,7 +908,7 @@ function exportData(){
 }
 function bkInfo(){
   const lb=Math.max(db.meta.lastBackup||0,Number(localStorage.getItem('planner.lastSync'))||0)||null;
-  $('#gCid').value=localStorage.getItem('planner.cid')||'';
+  {const c=ghCfg();$('#gRepo').value=c?c.repo:'';$('#gToken').placeholder=c?'(token saved — leave blank to keep)':'github_pat_…'}
   setStatus();
   $('#bkInfo').textContent=`${db.events.length} events/deadlines, ${db.todos.length} to-dos, ${db.projects.length} projects, ${Object.keys(db.notes).length} notes. `+(lb?'Last backup: '+new Date(lb).toLocaleString():'No backup yet.');
 }
@@ -1030,14 +1043,12 @@ function checkReminders(){
     }
   });
 }
-/* ================= Google Drive sync ================= */
+/* ================= Sync (private GitHub repo) ================= */
 const SETTINGS=['studyStart','examDate','target','revIntervals'];
 const MAIN='planner-data.json',KEEP=30,SNAP_RE=/^planner-\d{4}-\d{2}-\d{2}\.json$/;
-const DRV='https://www.googleapis.com/drive/v3/files',UPL='https://www.googleapis.com/upload/drive/v3/files';
-let tok=null,tokExp=0,syncing=false,again=false,st=null,gMsg='',needSync=!!localStorage.getItem('planner.gon'),lastTry=0;
-const gCid=()=>localStorage.getItem('planner.cid')||'';
-const gConnected=()=>!!localStorage.getItem('planner.gon')&&!!gCid();
-const tokOk=()=>!!tok&&Date.now()<tokExp-60000;
+let syncing=false,again=false,st=null,gMsg='';
+const ghCfg=()=>{try{return JSON.parse(localStorage.getItem('planner.gh')||'null')}catch(e){return null}};
+const gConnected=()=>{const c=ghCfg();return !!(c&&c.repo&&c.token)};
 
 function mergeDocs(A,B){
   const out=fresh(),tomb={};
@@ -1099,11 +1110,28 @@ function applyRestore(x){
   if(gConnected())syncNow({force:true});
 }
 
+function syncState(){
+  if(!gConnected())return'off';
+  if(syncing)return'busy';
+  if(/^Not synced|failed/i.test(gMsg))return'err';
+  const ls=Number(localStorage.getItem('planner.lastSync'))||0;
+  if((db.meta.updated||0)>ls+1000)return'pending';
+  return'ok';
+}
+const SYNC_LABEL={off:'Off',busy:'Syncing',pending:'Saving…',err:'Retry',ok:'Synced'};
+function updateSyncBtn(){
+  const b=$('#syncBtn');if(!b)return;
+  const s=syncState(),ls=Number(localStorage.getItem('planner.lastSync'))||0;
+  b.dataset.s=s;$('#syncTxt').textContent=SYNC_LABEL[s];
+  b.title=({off:'Sync not connected. Tap to set up.',busy:'Syncing…',pending:'Changes saved on this device, waiting to sync',err:gMsg,ok:'All changes are backed up'})[s]+(ls&&s!=='off'?' · Last sync '+new Date(ls).toLocaleTimeString():'');
+}
+setInterval(()=>updateSyncBtn(),20000);
 function setStatus(m){
   if(m!==undefined)gMsg=m;
+  updateSyncBtn();
   const el=$('#gStatus');if(!el)return;
-  const ls=Number(localStorage.getItem('planner.lastSync'))||0;
-  el.textContent=gMsg||(gConnected()?'Connected.'+(ls?' Last synced '+new Date(ls).toLocaleString():' Tap Sync now.'):'Not connected.');
+  const ls=Number(localStorage.getItem('planner.lastSync'))||0,c=ghCfg();
+  el.textContent=gMsg||(gConnected()?'Connected to '+c.repo+'.'+(ls?' Last synced '+new Date(ls).toLocaleString():''):'Not connected.');
 }
 function softRender(n=0){
   const a=document.activeElement;
@@ -1111,155 +1139,185 @@ function softRender(n=0){
   if(busy&&n<20){setTimeout(()=>softRender(n+1),3000);return}
   render();
 }
-function loadGsi(){
-  return new Promise((res,rej)=>{
-    if(window.google&&google.accounts&&google.accounts.oauth2)return res();
-    const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
-    s.onload=()=>res();s.onerror=()=>rej(new Error('Could not reach Google (are you offline?)'));
-    document.head.appendChild(s);
-  });
+
+/* ---- GitHub transport (Contents API) ---- */
+const b64=s=>{const bytes=new TextEncoder().encode(s);let bin='';for(let i=0;i<bytes.length;i+=8192)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));return btoa(bin)};
+function gh(path,opt){
+  const c=ghCfg(),o=Object.assign({cache:'no-store'},opt||{});
+  o.headers=Object.assign({Authorization:'Bearer '+c.token,Accept:'application/vnd.github+json'},o.headers||{});
+  return fetch(`https://api.github.com/repos/${c.repo}${path}`,o);
 }
-const withTimeout=(p,ms,msg)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error(msg)),ms))]);
-async function getToken(interactive){
-  if(tokOk())return tok;
-  await loadGsi();
-  const cid=gCid();if(!cid)throw new Error('Add your Google Client ID first.');
-  return withTimeout(new Promise((res,rej)=>{
-    const tc=google.accounts.oauth2.initTokenClient({
-      client_id:cid,scope:'https://www.googleapis.com/auth/drive.appdata',
-      callback:r=>{if(r.error)return rej(new Error(r.error_description||r.error));tok=r.access_token;tokExp=Date.now()+(Number(r.expires_in)||3600)*1000;localStorage.setItem('planner.gon','1');res(tok)},
-      error_callback:e=>rej(new Error(e&&e.type==='popup_failed_to_open'?'The Google sign-in window was blocked. Tap Sync now again.':'Google sign-in was cancelled or failed.'))
-    });
-    tc.requestAccessToken({prompt:(interactive&&!localStorage.getItem('planner.gon'))?'select_account':''});
-  }),interactive?180000:30000,'Google sign-in timed out. Tap Sync now to try again.');
+async function ghOk(r){
+  if(r.ok)return r;
+  if(r.status===401)throw new Error('GitHub rejected the token. It may have expired. Make a new token and reconnect.');
+  if(r.status===403||r.status===429)throw new Error('GitHub refused the request. Check the token has Contents: read and write on the repo.');
+  if(r.status===404)throw new Error('Repo not found, or the token has no access to it.');
+  if(r.status===409||r.status===422){const e=new Error('conflict');e.conflict=true;throw e}
+  throw new Error('GitHub error '+r.status);
 }
-async function dfetch(url,opt){
-  const t=await getToken(false);
-  const o=Object.assign({},opt||{});o.headers=Object.assign({Authorization:'Bearer '+t},o.headers||{});
-  const r=await fetch(url,o);
-  if(r.status===401){tok=null;throw new Error('Google session expired. Tap Sync now.')}
-  if(!r.ok)throw new Error('Google Drive error '+r.status);
-  return r;
+async function listDir(dir){
+  const r=await gh('/contents'+(dir?'/'+dir:''));
+  if(r.status===404)return[];
+  await ghOk(r);
+  const j=await r.json();
+  return Array.isArray(j)?j.filter(f=>f.type==='file'):[];
 }
-async function listFiles(){
-  const out=[];let pt='';
-  do{
-    const r=await dfetch(`${DRV}?spaces=appDataFolder&pageSize=100&fields=${encodeURIComponent('nextPageToken,files(id,name)')}&q=${encodeURIComponent('trashed=false')}${pt?'&pageToken='+encodeURIComponent(pt):''}`);
-    const j=await r.json();out.push(...(j.files||[]));pt=j.nextPageToken||'';
-  }while(pt);
-  return out;
+async function readFile(path){
+  const r=await ghOk(await gh('/contents/'+path,{headers:{Accept:'application/vnd.github.raw+json'}}));
+  return JSON.parse(await r.text());
 }
-const readFile=async id=>(await dfetch(`${DRV}/${id}?alt=media`)).json();
-async function writeFile(name,obj,id){
-  const meta=id?{}:{name,parents:['appDataFolder']},b='pl'+uid();
-  const body=`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(obj)}\r\n--${b}--`;
-  const r=await dfetch(`${UPL}${id?'/'+id:''}?uploadType=multipart&fields=id`,{method:id?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body});
-  return (await r.json()).id;
+async function writeFile(path,obj,sha){
+  const body={message:'planner sync '+new Date().toISOString(),content:b64(JSON.stringify(obj))};
+  if(sha)body.sha=sha;
+  await ghOk(await gh('/contents/'+path,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));
 }
+async function deleteFile(path,sha){
+  await ghOk(await gh('/contents/'+path,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'planner prune old backup',sha})}));
+}
+
 function scheduleSync(ms){
+  updateSyncBtn();
   if(!gConnected())return;
-  if(!tokOk()){needSync=true;return}
   clearTimeout(st);st=setTimeout(()=>syncNow(),ms||15000);
+}
+async function syncOnce(opts){
+  const root=await listDir('');
+  const main=root.find(f=>f.name===MAIN);
+  const snapFiles=await listDir('backups');
+  let remote=null;
+  if(main){const r=await readFile(main.path);if(r&&Array.isArray(r.events))remote=migrate(Object.assign(fresh(),r))}
+  if(opts.force)markAsNewest(remote);
+  else if(remote)db=mergeDocs(db,remote);
+  resetSigs();persist();
+  const syncedAt=Date.now();
+  const sname=`planner-${ds(new Date())}.json`,sf=snapFiles.find(f=>f.name===sname);
+  const h=hash(JSON.stringify(db));
+  if(opts.force||h!==localStorage.getItem('planner.lastHash')||!main||!sf){
+    await writeFile(MAIN,db,main&&main.sha);
+    await writeFile('backups/'+sname,db,sf&&sf.sha);
+    const names=snapFiles.map(f=>f.name).filter(n=>SNAP_RE.test(n));
+    if(!sf)names.push(sname);
+    names.sort();
+    for(const n of names.slice(0,Math.max(0,names.length-KEEP))){const f=snapFiles.find(x=>x.name===n);if(f)await deleteFile(f.path,f.sha)}
+    localStorage.setItem('planner.lastHash',h);
+  }
+  return syncedAt;
 }
 async function syncNow(opts){
   opts=opts||{};
+  if(!gConnected())return;
   if(syncing){again=true;return}
   if(document.querySelector('dialog[open]:not(#bkDlg)')){clearTimeout(st);st=setTimeout(()=>syncNow(opts),8000);return}
-  syncing=true;lastTry=Date.now();setStatus('Syncing…');
+  syncing=true;setStatus('Syncing…');
   try{
-    await getToken(!!opts.interactive);
-    const files=await listFiles();
-    const main=files.find(f=>f.name===MAIN);
-    let remote=null;
-    if(main){const r=await readFile(main.id);if(r&&Array.isArray(r.events))remote=migrate(Object.assign(fresh(),r))}
-    if(opts.force)markAsNewest(remote);
-    else if(remote)db=mergeDocs(db,remote);
-    resetSigs();persist();
-    const sname=`planner-${ds(new Date())}.json`,sf=files.find(f=>f.name===sname);
-    const h=hash(JSON.stringify(db));
-    if(opts.force||h!==localStorage.getItem('planner.lastHash')||!main||!sf){
-      await writeFile(MAIN,db,main&&main.id);
-      await writeFile(sname,db,sf&&sf.id);
-      const snaps=files.map(f=>f.name).filter(n=>SNAP_RE.test(n));
-      if(!sf)snaps.push(sname);
-      snaps.sort();
-      for(const n of snaps.slice(0,Math.max(0,snaps.length-KEEP))){const f=files.find(x=>x.name===n);if(f)await dfetch(`${DRV}/${f.id}`,{method:'DELETE'})}
-      localStorage.setItem('planner.lastHash',h);
+    let at;
+    for(let i=0;i<3;i++){
+      try{at=await syncOnce(opts);break}
+      catch(e){if(e.conflict&&i<2){await new Promise(r=>setTimeout(r,500));continue}throw e}
     }
-    localStorage.setItem('planner.lastSync',String(Date.now()));
-    needSync=false;setStatus('');
-    softRender();
+    localStorage.setItem('planner.lastSync',String(at));
+    setStatus('');softRender();
   }catch(e){
-    needSync=true;
     setStatus(e instanceof TypeError?'Not synced: no internet connection. Your changes are saved on this device and will sync later.':'Not synced: '+(e&&e.message||'unknown error'));
   }finally{
-    syncing=false;
+    syncing=false;updateSyncBtn();
     if(again){again=false;scheduleSync(2000)}
+  }
+}
+async function connectGh(){
+  const repo=$('#gRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/+$/,'');
+  let token=$('#gToken').value.trim();
+  const old=ghCfg();
+  if(!token&&old&&old.repo===repo)token=old.token;
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){alert('Enter the repo as username/repo-name, for example priya/planner-data');return}
+  if(!token){alert('Paste your GitHub token first.');return}
+  setStatus('Checking…');
+  try{
+    const r=await fetch('https://api.github.com/repos/'+repo,{cache:'no-store',headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json'}});
+    if(r.status===401)throw new Error('GitHub rejected the token.');
+    if(r.status===404)throw new Error('Repo not found, or this token has no access to it.');
+    if(!r.ok)throw new Error('GitHub error '+r.status);
+    const j=await r.json();
+    if(!j.private){
+      setStatus('Not connected: that repo is public.');
+      alert('That repo is PUBLIC, so anyone could read your planner. Make it private in the repo Settings, then connect again.');
+      return;
+    }
+    if(j.permissions&&j.permissions.push===false)throw new Error('This token can only read the repo. Give it Contents: read and write.');
+    localStorage.setItem('planner.gh',JSON.stringify({repo,token}));
+    localStorage.removeItem('planner.lastHash');localStorage.removeItem('planner.lastSync');
+    $('#gToken').value='';
+    setStatus('');
+    syncNow();
+  }catch(e){
+    setStatus('Not connected: '+(e instanceof TypeError?'no internet connection':e.message));
   }
 }
 async function openSnaps(){
   try{
     setStatus('Loading daily backups…');
-    const files=(await listFiles()).filter(f=>SNAP_RE.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));
+    const files=(await listDir('backups')).filter(f=>SNAP_RE.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));
     setStatus('');
     if(!files.length){alert('No daily backups found yet.');return}
-    $('#gSnapSel').innerHTML=files.map(f=>`<option value="${f.id}">${esc(f.name.slice(8,18))}</option>`).join('');
+    $('#gSnapSel').innerHTML=files.map(f=>`<option value="${esc(f.path)}">${esc(f.name.slice(8,18))}</option>`).join('');
     $('#gSnapBox').style.display='';
   }catch(e){setStatus('Could not load backups: '+e.message)}
 }
 async function restoreSnap(){
-  const id=$('#gSnapSel').value;if(!id)return;
+  const path=$('#gSnapSel').value;if(!path)return;
   const label=$('#gSnapSel').selectedOptions[0].textContent;
   if(!confirm(`Replace everything with the backup from ${label}? Changes made after that day will be lost on all your devices.`))return;
   try{
     setStatus('Restoring…');
-    const x=await readFile(id);
+    const x=await readFile(path);
     if(!x||!Array.isArray(x.events))throw new Error('Backup file is not valid.');
     $('#gSnapBox').style.display='none';
     applyRestore(x);
   }catch(e){setStatus('Restore failed: '+e.message)}
 }
+async function shareBackup(){
+  const text=JSON.stringify(db,null,1),name=`planner-backup-${ds(new Date())}.json`;
+  try{
+    for(const type of ['application/json','text/plain']){
+      const f=new File([text],name,{type});
+      if(navigator.canShare&&navigator.canShare({files:[f]})){
+        await navigator.share({files:[f],title:'Planner backup'});
+        db.meta.lastBackup=Date.now();save(true);bkInfo();render();
+        return;
+      }
+    }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  exportData();
+  alert('Your phone could not open the share menu, so the backup was saved to Downloads instead. Open Drive and upload it from there.');
+}
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-a]');
-  if(t){
-    const a=t.dataset.a;
-    if(a==='gConnect'){
-      const cid=$('#gCid').value.trim();
-      if(!/\.apps\.googleusercontent\.com$/.test(cid)){alert('Paste the Client ID from Google Cloud. It ends with .apps.googleusercontent.com');return}
-      localStorage.setItem('planner.cid',cid);localStorage.removeItem('planner.gon');tok=null;
-      syncNow({interactive:true});return;
-    }
-    if(a==='gSync'){
-      const cid=$('#gCid').value.trim();if(cid&&cid!==gCid()){localStorage.setItem('planner.cid',cid)}
-      if(!gCid()){alert('Paste your Google Client ID first, then tap Connect Google.');return}
-      syncNow({interactive:true});return;
-    }
-    if(a==='gSnaps'){if(!gConnected()){alert('Connect Google first.');return}openSnaps();return}
-    if(a==='gSnapGo'){restoreSnap();return}
-    if(a==='gOff'){
-      if(!confirm('Disconnect Google? Your data stays on this device and in Drive, but stops syncing.'))return;
-      try{if(tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(tok,()=>{})}catch(_){}
-      tok=null;localStorage.removeItem('planner.gon');needSync=false;setStatus('Disconnected.');return;
-    }
-    return;
+  const t=e.target.closest('[data-a]');if(!t)return;
+  const a=t.dataset.a;
+  if(a==='gConnect')connectGh();
+  else if(a==='gSync'){if(!gConnected())alert('Connect first: enter your repo and token, then tap Connect.');else syncNow()}
+  else if(a==='syncDot'){if(!gConnected()){bkInfo();$('#bkDlg').showModal()}else syncNow()}
+  else if(a==='gSnaps'){if(!gConnected())alert('Connect first.');else openSnaps()}
+  else if(a==='gSnapGo')restoreSnap();
+  else if(a==='shareBackup')shareBackup();
+  else if(a==='gOff'){
+    if(!confirm('Disconnect sync? Your data stays on this device and in the repo, but stops syncing.'))return;
+    localStorage.removeItem('planner.gh');localStorage.removeItem('planner.lastHash');setStatus('Disconnected.');
   }
-  // A tap anywhere in the app lets Google sign-in open a window (browsers only allow that from a tap).
-  if(gConnected()&&needSync&&!syncing&&!tokOk()&&Date.now()-lastTry>60000&&!e.target.closest('dialog'))syncNow();
 });
-setInterval(()=>{if(gConnected()&&tokOk()&&!document.hidden&&!syncing)syncNow()},5*60000);
+setInterval(()=>{if(gConnected()&&!document.hidden&&!syncing)syncNow()},5*60000);
 
 setInterval(checkReminders,30000);
 let hiddenAt=0;
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){hiddenAt=Date.now();return}
   render();checkReminders();
-  if(gConnected()){if(tokOk()&&!syncing)syncNow();else if(hiddenAt&&Date.now()-hiddenAt>5*60000)needSync=true}
+  if(gConnected()&&!syncing)syncNow();
   if(hiddenAt&&Date.now()-hiddenAt>10*60000)showPop();
 });
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
-render();checkReminders();showPop();
+render();checkReminders();showPop();if(gConnected())syncNow();
 </script>
 </body>
 </html>
