@@ -151,7 +151,7 @@ body{max-width:560px;margin-left:auto;margin-right:auto}
 
 /* month: day 1..N in rows of 7, fixed screen, tinted rows, selected-day panel */
 body{touch-action:manipulation}
-html:has(body.nos){overflow:hidden}body.nos{overflow:hidden;height:100dvh}body.nos .banner{display:none}.mgrid.fit .cell .n{white-space:nowrap}.mgrid.fit .cell .cnt{white-space:nowrap;overflow:hidden}.mgrid.fit .cell .emos{overflow:hidden;max-height:36px}
+html:has(body.nos){overflow:hidden}body.nos{overflow:hidden}html.scaled body{max-width:none}body.nos .banner{display:none}.mgrid.fit .cell .n{white-space:nowrap}.mgrid.fit .cell .cnt{white-space:nowrap;overflow:hidden}.mgrid.fit .cell .emos{overflow:hidden;max-height:36px}
 .mgrid.fit{gap:4px}
 .mgrid.fit .cell{background:hsla(var(--h),75%,62%,.2);border:1px solid hsla(var(--h),60%,45%,.25);border-radius:9px;padding:3px 3px;cursor:pointer;user-select:none;-webkit-user-select:none}
 .mgrid.fit .cell.today{border:2px solid var(--accent)}
@@ -163,12 +163,13 @@ html:has(body.nos){overflow:hidden}body.nos{overflow:hidden;height:100dvh}body.n
 .dpanel .dbody{overflow:auto;flex:1;min-height:0;margin-top:4px}
 .dpanel .grow{font-size:14px;cursor:pointer}
 .dpanel .ev{font-size:13px;padding:5px 8px;margin:3px 0}
+html.scaled .seg .lg{display:none}html.scaled .seg .sm{display:inline}html.scaled .seg{flex-wrap:nowrap}html.scaled .seg button{padding:6px 10px}html.scaled #title{font-size:14px}html.scaled .tabs button{padding:6px 7px;font-size:13px}
 </style>
 </head>
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v7</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v9</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -714,12 +715,17 @@ function backupBanner(){
   if(days===null||days>=1)return `<div class="banner warn">${days===null?'No backup yet.':'Last backup '+days+' day(s) ago.'} Open <b>Backup</b> and download one.</div>`;
   return '';
 }
+let SC=1;
+function fitScale(){
+  const de=document.documentElement;de.style.zoom='';de.classList.remove('scaled');SC=1;
+  const sw=Math.min(screen.width||9999,screen.height||9999),iw=window.innerWidth;
+  if(sw<=600&&iw>sw*1.25){SC=iw/Math.max(sw,320);de.style.zoom=SC;de.classList.add('scaled')}
+}
 function layoutFit(){
   const g=document.querySelector('.fit');
   document.body.classList.toggle('nos',!!(g&&g.classList.contains('mgrid')));
   if(!g)return;
-  const top=g.getBoundingClientRect().top+window.scrollY;
-  const avail=Math.max(300,Math.floor(window.innerHeight-top-16));
+  const avail=Math.max(300,Math.floor((window.innerHeight-g.getBoundingClientRect().top)/SC-16));
   const pn=document.querySelector('.dpanel');
   if(pn){const gh=Math.floor(avail*0.62);g.style.setProperty('--gridH',gh+'px');pn.style.height=(avail-gh-8)+'px'}
   else g.style.setProperty('--gridH',avail+'px');
@@ -745,8 +751,9 @@ function fitCells(){
   });
 }
 let rzT;
-window.addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(()=>{const a=document.activeElement;if(a&&/^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName))return;layoutFit()},150)});
+window.addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(()=>{const a=document.activeElement;if(a&&/^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName))return;fitScale();layoutFit()},150)});
 function render(){
+  if(!render.sc){render.sc=1;fitScale()}
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=(view==='projects'||view==='study')?'none':'');
   let h=deadlineBanner()+streakBanner()+backupBanner();
