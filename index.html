@@ -134,6 +134,58 @@ input[type=text],input[type=password],input[type=date],input[type=time],input[ty
 @media (min-width:1100px){.wgrid.fit{grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:minmax(90px,.45fr) minmax(0,1fr)}.wgrid.fit .card.sun{grid-column:auto}}
 .pt-w{display:none}.pt-n{margin-top:1px;line-height:1.2}
 @media (min-width:700px){.pt-w{display:inline}}
+
+/* ===== v7: one day layout shared by Month, Week and Day ===== */
+:root{--r:10px;--r2:6px}
+.cell,.card,.lcard{border-radius:var(--r)}
+.sh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.sh b{font-size:14px}
+.sh small{color:var(--mute)}
+.tsub{display:flex;justify-content:center;gap:8px;font-size:11px;font-weight:400;color:var(--mute);white-space:nowrap;margin-top:1px}
+.tsub i{font-style:normal;margin-right:2px}
+.tsub b{color:var(--ink);font-variant-numeric:tabular-nums}
+.tsub u{display:none;text-decoration:none}
+.tsub .sd{display:none}
+@media (min-width:700px){.tsub{font-size:12px;gap:12px}.tsub u,.tsub .sd{display:inline}}
+.mkchips span{flex:none;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:12px;color:var(--mute)}
+.mkchips b{color:var(--ink);font-variant-numeric:tabular-nums}
+.dh{display:flex;align-items:center;gap:4px;min-width:0;white-space:nowrap}
+.dh .dw{font-size:11px;font-weight:600;color:var(--mute)}
+.dh .dn{font-size:13px;font-weight:700;line-height:1;min-width:22px;height:22px;padding:0 4px;display:inline-grid;place-items:center;border-radius:11px}
+.dh .dm{font-size:11px;color:var(--mute)}
+.today .dh .dn{background:var(--accent);color:#fff}
+.today .dh .dw{color:var(--accent)}
+.dh.big{gap:8px}
+.dh.big .dw{font-size:16px;color:var(--ink)}
+.dh.big .dn{font-size:20px;min-width:38px;height:38px;border-radius:19px}
+.dh.big .dm{font-size:15px}
+.today .dh.big .dw{color:var(--accent)}
+.cell.today,.card.today{border:1px solid var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.cell .n{align-items:center}
+.cell .dh{gap:2px}
+.cell .dh .dw{font-size:10px}
+.cell .dh .dn{font-size:11px;min-width:18px;height:18px;border-radius:9px;padding:0 3px}
+@media (min-width:700px){.cell .dh .dw{font-size:11px}.cell .dh .dn{font-size:12px;min-width:22px;height:22px;border-radius:11px}}
+.ev,.chip{background:color-mix(in srgb,var(--c,var(--accent)) 14%,var(--card));border-left:4px solid var(--c,var(--accent));color:var(--ink)}
+.ev{border-radius:var(--r2)}
+.ev input{accent-color:var(--c,var(--accent))}
+.ev .tm{opacity:1;font-weight:700;font-variant-numeric:tabular-nums}
+.chip{border-left-width:3px}
+.chip b{font-variant-numeric:tabular-nums}
+.todo{border-radius:var(--r2)}
+.wgrid.fit .sh{margin-bottom:4px}
+.dayg{display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}
+.dayg .card{margin:0}
+@media (min-width:900px){.dayg{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.dayg .span2{grid-column:1/-1}}
+.mkchips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+.mktrend{display:flex;align-items:flex-end;gap:3px;height:38px;margin:4px 0 6px}
+.mktrend i{flex:1;max-width:20px;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px;opacity:.6}
+.mktrend i:last-child{opacity:1}
+.mkrow{display:flex;gap:8px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);cursor:pointer}
+.mkrow .dt{width:56px;flex:none;color:var(--mute);font-size:13px}
+.mkrow .sc{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mkrow .pc{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mkrow .nt{color:var(--mute);font-size:12px;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 </style>
 </head>
 <body>
@@ -280,6 +332,25 @@ input[type=text],input[type=password],input[type=date],input[type=time],input[ty
   </form>
 </dialog>
 
+<dialog id="mkDlg">
+  <form method="dialog" id="mkForm">
+    <b id="mkHead">Mock test</b>
+    <label>Paper</label><select id="mkPaper"></select>
+    <label>Date taken</label><input type="date" id="mkDate" required>
+    <div class="two">
+      <div><label>Marks scored</label><input type="number" id="mkMarks" min="0" step="any" required></div>
+      <div><label>Out of</label><input type="number" id="mkOut" min="1" step="any" value="100" required></div>
+    </div>
+    <label>Notes (weak areas, time taken, what to fix)</label><textarea id="mkNotes" style="min-height:70px"></textarea>
+    <div class="row" style="margin-top:14px">
+      <button type="button" class="btn del" id="mkDel">Delete</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="mkCancel">Cancel</button>
+      <button class="btn pri">Save</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="dlPop">
   <b>⚠️ Deadlines coming up</b>
   <div id="dlPopBody" style="margin-top:8px"></div>
@@ -343,13 +414,14 @@ const CATS={General:'#1f6f5c',Study:'#3b6fb6',Exam:'#b4531a',Work:'#7a4fb0',Pers
 const EMOJIS=['📚','📝','🎯','⏰','🧾','📊','💰','💼','🎥','✅','⚠️','🔥','📞','🏥','🛒','✈️','🎂','🏋️','🙏','🏠','📅','💡','📌','☕'];
 
 const KEY='planner.v1';
-function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],hlog:{},meta:{}}}
+function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],mocks:[],hlog:{},meta:{}}}
 function migrate(d){
   if((d.v||0)<4){
     (d.subjects||[]).forEach(s=>{if(s.kind==='recorded')s.done=s.total>0?Math.round(s.total*(Number(s.done)||0)/100*10)/10:0});
     d.v=4;
   }
   if(!d.hlog)d.hlog={};
+  if(!Array.isArray(d.mocks))d.mocks=[];
   return d;
 }
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?migrate(Object.assign(fresh(),x)):fresh()}catch(e){return fresh()}}
@@ -360,7 +432,7 @@ function save(silent){if(!silent){db.meta.log=db.meta.log||{};db.meta.log[ds(new
 function touch(k){db.ts=db.ts||{};db.ts[k]=Date.now()}
 
 /* ---------- change tracking (used by sync) ---------- */
-const COLS=['events','todos','projects','subjects'];
+const COLS=['events','todos','projects','subjects','mocks'];
 const SIGKEY='planner.sig';
 const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h.toString(36)+s.length};
 const itemSig=it=>{const c=Object.assign({},it);delete c.u;return hash(JSON.stringify(c))};
@@ -438,17 +510,17 @@ function projLinesForDays(a,b){
 /* ---------- html pieces ---------- */
 function evHtml(e){
   const dl=isDl(e),col=dl?'var(--warn)':(CATS[e.cat]||CATS.General);
-  const t=e.start?`<small>${e.start}${(!dl&&e.end)?'–'+e.end:''}</small>`:'';
+  const t=e.start?`<small class="tm">${e.start}${(!dl&&e.end)?'–'+e.end:''}</small>`:'';
   const chk=dl?`<input type="checkbox" ${e.done?'checked':''} data-a="dlDone" data-id="${e.id}" aria-label="Done">`:'';
-  return `<div class="ev ${dl&&e.done?'dn':''}" style="background:${col}" data-a="editEv" data-id="${e.id}">${chk}${(dl&&!e.emoji)?'🎯 ':''}${t}<span>${esc(label(e))}${e.seriesId?' 🔁':''}</span>${(!dl&&e.rem!==''&&e.rem!=null)?' 🔔':''}</div>`;
+  return `<div class="ev ${dl&&e.done?'dn':''}" style="--c:${col}" data-a="editEv" data-id="${e.id}">${chk}${(dl&&!e.emoji)?'🎯 ':''}${t}<span>${esc(label(e))}${e.seriesId?' 🔁':''}</span>${(!dl&&e.rem!==''&&e.rem!=null)?' 🔔':''}</div>`;
 }
 function chipHtml(e,mode){
   const dl=isDl(e),done=dl&&e.done,col=dl?'var(--warn)':(CATS[e.cat]||CATS.General);
   if(mode==='emoji'){const inner=e.emoji?esc(e.emoji):(dl?'🎯':`<i class="edot" style="background:${col}"></i>`);return `<span data-it class="emo ${done?'dn':''}" title="${esc(label(e))}">${inner}</span>`}
-  return `<span data-it class="chip ${done?'dn':''}" style="background:${col}">${e.start?`<b>${e.start}</b> `:''}${(dl&&!e.emoji)?'🎯 ':''}${esc(label(e))}</span>`;
+  return `<span data-it class="chip ${done?'dn':''}" style="--c:${col}">${e.start?`<b>${e.start}</b> `:''}${(dl&&!e.emoji)?'🎯 ':''}${esc(label(e))}</span>`;
 }
 function sessHtml(x){
-  return `<div class="ev ${x.done?'dn':''}" style="background:${x.col}" data-a="goProj" data-id="${x.pid}" data-w="${x.week}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}" aria-label="Done"><small>${x.start}${x.end?'–'+x.end:''}</small><span>${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week}</span></div>`;
+  return `<div class="ev ${x.done?'dn':''}" style="--c:${x.col}" data-a="goProj" data-id="${x.pid}" data-w="${x.week}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}" aria-label="Done"><small class="tm">${x.start}${x.end?'–'+x.end:''}</small><span>${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week}</span></div>`;
 }
 function sessTodoHtml(x){
   return `<div class="todo ${x.done?'done':''}"><input type="checkbox" ${x.done?'checked':''} data-a="pdone" data-key="${x.key}"><span data-a="goProj" data-id="${x.pid}" data-w="${x.week}">${esc(x.emoji)} ${esc(x.name)} · Wk ${x.week} · ${x.start}${x.end?'–'+x.end:''}</span></div>`;
@@ -465,6 +537,23 @@ function noteBox(k,ph){return `<textarea data-note="${k}" placeholder="${ph}">${
 /* ---------- views ---------- */
 const monthDays=(y,m)=>{const n=new Date(y,m+1,0).getDate(),o=[];for(let d=1;d<=n;d++)o.push(ds(new Date(y,m,d)));return o};
 const dayLabel=k=>{const d=parse(k);return `${DOW[(d.getDay()+6)%7]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}`};
+
+/* ---------- summary strip (same on Month, Week and Day) ---------- */
+const FULLDOW=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+function rangeKeys(){
+  if(view==='month')return monthDays(cur.getFullYear(),cur.getMonth());
+  if(view==='week'){const s=monday(cur);return Array.from({length:7},(_,i)=>ds(addDays(s,i)))}
+  return[ds(cur)];
+}
+function statSub(){
+  if(view!=='month'&&view!=='week'&&view!=='day')return '';
+  const keys=rangeKeys(),S=new Set(keys);let ev=0,dl=0,open=0,done=0;
+  db.events.forEach(e=>{if(S.has(e.date)){if(isDl(e))dl++;else ev++}});
+  keys.forEach(k=>{ev+=sessionsOn(k).length});
+  db.todos.forEach(t=>{if(S.has(t.date)){if(t.done)done++;else open++}});
+  return `<div class="tsub"><span title="Events"><i>📅</i><b>${ev}</b><u> ${ev===1?'event':'events'}</u></span><span title="Deadlines"><i>🎯</i><b>${dl}</b><u> ${dl===1?'deadline':'deadlines'}</u></span><span title="To-dos left"><i>☐</i><b>${open}</b><u> to-do left</u></span>${done?`<span class="sd" title="To-dos done"><i>✔</i><b>${done}</b><u> done</u></span>`:''}</div>`;
+}
 function monthGrid(y,m){
   const first=new Date(y,m,1),start=monday(first),t=ds(today());
   const R=Math.ceil(((first.getDay()+6)%7+new Date(y,m+1,0).getDate())/7);
@@ -475,9 +564,9 @@ function monthGrid(y,m){
     let tags='';
     db.projects.forEach(p=>{const pw=projWeekOf(p,k);if(pw&&pw.day===1)tags+=`<span class="ptag">${esc(p.emoji||'📘')}W${pw.w}</span>`});
     const icons=ag.map(x=>x.kind==='session'?`<span data-it class="emo ${x.done?'dn':''}">${esc(x.emoji)}</span>`:chipHtml(x,'emoji')).join('');
-    const chips=ag.map(x=>x.kind==='session'?`<span data-it class="chip ${x.done?'dn':''}" style="background:${x.col}"><b>${x.start}</b> ${esc(x.emoji)} ${esc(x.name)}</span>`:chipHtml(x,'full')).join('');
+    const chips=ag.map(x=>x.kind==='session'?`<span data-it class="chip ${x.done?'dn':''}" style="--c:${x.col}"><b>${x.start}</b> ${esc(x.emoji)} ${esc(x.name)}</span>`:chipHtml(x,'full')).join('');
     const todos=open.map(x=>`<div data-it class="mtd">☐ ${esc(x.text)}</div>`).join('');
-    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span>${DOW[i%7]} ${d.getDate()}</span><span class="pt-w">${tags}</span></div><div class="nar">${tags?`<div data-it class="pt-n">${tags}</div>`:''}<div class="emos">${icons}</div>${openN?`<div class="cnt">☐ ${openN}</div>`:''}</div><div class="wid">${chips}${todos}</div></div>`;
+    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span class="dh"><span class="dw">${DOW[i%7]}</span><span class="dn">${d.getDate()}</span></span><span class="pt-w">${tags}</span></div><div class="nar">${tags?`<div data-it class="pt-n">${tags}</div>`:''}<div class="emos">${icons}</div>${openN?`<div class="cnt">☐ ${openN}</div>`:''}</div><div class="wid">${chips}${todos}</div></div>`;
   }
   return h+'</div>';
 }
@@ -523,33 +612,33 @@ function renderMonth(){
   const MM=[['over','🔭 Overview','🔭 Overview'],['sched','Schedule & deadlines','Schedule'],['todo','To-do lists','To-do'],['proj','Projects','Projects']];
   let h=`<div class="seg">${MM.map(([k,l,sh])=>`<button class="${mode===k?'on':''}" data-a="mm" data-m="${k}"><span class="lg">${esc(l)}</span><span class="sm">${esc(sh)}</span></button>`).join('')}</div>`;
   h+=mode==='sched'?monthSched(y,m):mode==='todo'?monthTodo(y,m):mode==='proj'?monthProj(y,m):monthGrid(y,m);
-  h+=`<div class="sec"><h2>Month goals &amp; notes</h2>${noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}</div>`;
+  h+=`<div class="card" style="margin-top:10px"><div class="sh"><b>Month goals &amp; notes</b></div>${noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}</div>`;
   return h;
 }
 function renderWeek(){
   const s=monday(cur),e=addDays(s,6),t=ds(today());
   $('#title').textContent=`${s.getDate()} ${MON[s.getMonth()].slice(0,3)} – ${e.getDate()} ${MON[e.getMonth()].slice(0,3)} ${e.getFullYear()}`;
-  let h='<div class="wgrid fit">'+`<div class="card plan"><h3 style="cursor:default">Week plan &amp; notes</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}</div>`;
+  let h='<div class="wgrid fit">'+`<div class="card plan"><div class="sh"><b>Week plan &amp; notes</b></div>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}</div>`;
   for(let i=0;i<7;i++){
     const d=addDays(s,i),k=ds(d);
-    h+=`<div class="card ${k===t?'today':''} ${i===6?'sun':''}"><div class="row" style="flex-wrap:nowrap;gap:4px"><h3 class="grow" data-a="goDay" data-d="${k}">${DOW[i]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}</h3><button class="mini" data-a="qtodo" data-d="${k}" title="Add a to-do">☐+</button><button class="mini" data-a="newEv" data-d="${k}" title="Add an event or deadline">＋</button></div>`+
+    h+=`<div class="card ${k===t?'today':''} ${i===6?'sun':''}"><div class="row" style="flex-wrap:nowrap;gap:4px"><div class="dh grow" data-a="goDay" data-d="${k}" style="cursor:pointer"><span class="dw">${DOW[i]}</span><span class="dn">${d.getDate()}</span><span class="dm">${MON[d.getMonth()].slice(0,3)}</span></div><button class="mini" data-a="qtodo" data-d="${k}" title="Add a to-do">☐+</button><button class="mini" data-a="newEv" data-d="${k}" title="Add an event or deadline">＋</button></div>`+
       agendaHtml(k)+todosOn(k).map(todoHtml).join('')+`</div>`;
   }
   return h+'</div>';
 }
 function renderDay(){
-  const k=ds(cur);
+  const k=ds(cur),t=ds(today());
   $('#title').textContent=`${DOW[(cur.getDay()+6)%7]}, ${cur.getDate()} ${MON[cur.getMonth()].slice(0,3)} ${cur.getFullYear()}`;
   const prev=ds(addDays(cur,-1));
   const carry=todosOn(prev).filter(t=>!t.done).length;
-  let h='';
-  const pl=projLinesForDays(k,k);
-  if(pl)h+=`<div class="card" style="margin-bottom:10px">${db.projects.map(p=>{const w=projWeekOf(p,k);return w?`<div class="pline">${esc(p.emoji||'📘')} ${esc(p.name)} · Week ${w.w} of ${w.total} · Day ${w.day}</div>`:''}).join('')}</div>`;
-  h+=`<div class="card"><div class="row"><b class="grow">Schedule &amp; deadlines</b><button class="btn pri" data-a="newEv" data-d="${k}">+ Add</button></div>`+
-    (agendaHtml(k)||'<p style="color:var(--mute)">Nothing scheduled.</p>')+`</div>`;
-  h+=`<div class="card sec"><div class="row"><b class="grow">To-do</b><button class="btn" data-a="newRepTodo" data-d="${k}">🔁 Repeating to-do</button><button class="btn" data-a="newRev" data-d="${k}">🧠 Revision</button>${carry?`<button class="btn" data-a="carry">Carry over ${carry} from yesterday</button>`:''}</div>${todoBlock(k)}</div>`;
-  h+=`<div class="sec"><h2>Day notes</h2>${noteBox('d:'+k,'Notes, study log, thoughts for today…')}</div>`;
-  return h;
+  const pl=db.projects.map(p=>{const w=projWeekOf(p,k);return w?`<div class="pline">${esc(p.emoji||'📘')} ${esc(p.name)} · Week ${w.w} of ${w.total} · Day ${w.day}</div>`:''}).join('');
+  let h='<div class="dayg">';
+  h+=`<div class="card span2 ${k===t?'today':''}"><div class="dh big"><span class="dw">${FULLDOW[(cur.getDay()+6)%7]}</span><span class="dn">${cur.getDate()}</span><span class="dm">${MON[cur.getMonth()]} ${cur.getFullYear()}</span></div>${pl?`<div style="margin-top:8px">${pl}</div>`:''}</div>`;
+  h+=`<div class="card"><div class="sh"><b>Schedule &amp; deadlines</b><span class="grow"></span><button class="btn pri" data-a="newEv" data-d="${k}">+ Add</button></div>`+
+    (agendaHtml(k)||'<p class="hint">Nothing scheduled. Tap + Add to plan this day.</p>')+`</div>`;
+  h+=`<div class="card"><div class="sh"><b>To-do</b><span class="grow"></span><button class="btn" data-a="newRepTodo" data-d="${k}">🔁 Repeat</button><button class="btn" data-a="newRev" data-d="${k}">🧠 Revision</button>${carry?`<button class="btn" data-a="carry">Carry over ${carry}</button>`:''}</div>${todoBlock(k)}</div>`;
+  h+=`<div class="card span2"><div class="sh"><b>Day notes</b></div>${noteBox('d:'+k,'Notes, study log, thoughts for today…')}</div>`;
+  return h+'</div>';
 }
 function wkState(){try{return JSON.parse(localStorage.getItem('planner.wk')||'{}')}catch(e){return{}}}
 function isWkOpen(key,now){const s=wkState();return key in s?!!s[key]:now}
@@ -590,13 +679,10 @@ function renderProjects(){
 }
 function deadlineBanner(){
   const t=ds(today());
-  const list=db.events.filter(e=>isDl(e)&&!e.done&&daysBetween(t,e.date)<=3).sort((a,b)=>a.date.localeCompare(b.date));
+  const list=db.events.filter(e=>isDl(e)&&!e.done&&daysBetween(t,e.date)<=3);
   if(!list.length)return '';
-  return `<div class="banner warn"><b>Deadlines due within 3 days</b>`+list.map(e=>{
-    const n=daysBetween(t,e.date);
-    const when=n<0?`overdue by ${-n} day(s)`:n===0?'due today':n===1?'due tomorrow':`due in ${n} days`;
-    return `<div class="dlrow"><span>${esc(label(e))} <small>— ${when} (${fmtShort(parse(e.date))})</small></span><button class="btn" data-a="dlDone" data-id="${e.id}" data-set="1">Done</button></div>`;
-  }).join('')+`</div>`;
+  const late=list.filter(e=>daysBetween(t,e.date)<0).length;
+  return `<div class="banner warn"><div class="row" style="flex-wrap:nowrap"><span class="grow">⚠️ <b>${list.length}</b> deadline${list.length===1?'':'s'} due within 3 days${late?` (${late} overdue)`:''}</span><button class="btn" data-a="showDl">Review</button></div></div>`;
 }
 function dueSoon(){const t=ds(today());return db.events.filter(e=>isDl(e)&&!e.done&&daysBetween(t,e.date)<=3).sort((a,b)=>a.date.localeCompare(b.date))}
 function dlRows(list){
@@ -660,7 +746,7 @@ function renderStudy(){
     `<p style="margin:10px 0 2px"><b>${startTxt}</b>${exLeft!==null?` · <b>${exLeft>0?exLeft+' days to exams':exLeft===0?'Exams start today':'Exams have started'}</b>`:''}</p>`+
     `<div class="bar"><i style="width:${avg}%"></i></div><div>Overall progress: <b>${avg}%</b> across ${subs.length} paper(s)</div>`+
     `<div style="margin-top:10px"><div class="row"><b>Study hours today: ${fmtN(hsum(t))} / ${fmtN(target)}</b><span class="grow"></span><span style="font-size:13px">Daily target <input type="number" class="hin" min="0.5" step="0.5" data-meta="target" value="${target}" style="width:64px"></span></div><div class="bar"><i style="width:${Math.min(100,Math.round(100*hsum(t)/target))}%"></i></div><div class="wbars">${bars}</div><div style="font-size:12px;color:var(--mute);margin-top:4px">Last 7 days, today on the right · ${fmtN(wk7)} hrs in total</div></div>`+(remH>0?`<div style="color:var(--mute);font-size:13px">Recorded lectures left: about ${remH.toFixed(1)} hrs${exLeft>0?`, so about ${(remH/exLeft).toFixed(1)} hrs/day to finish before exams`:''}</div>`:'')+`</div>`;
-  h+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="logStudy">+ Log study time</button><button class="btn" data-a="newRev">🧠 Add revision</button><button class="btn" data-a="newSub">+ Add paper</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
+  h+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="logStudy">+ Log study time</button><button class="btn" data-a="newRev">🧠 Add revision</button><button class="btn" data-a="newMock">📝 Add mock test</button><button class="btn" data-a="newSub">+ Add paper</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
   subs.forEach(s=>{
     const p=pct(s),live=s.kind==='live';
     const target=s.exam||ex,left=target?daysBetween(t,target):null,rh=remHours(s);
@@ -673,8 +759,67 @@ function renderStudy(){
       (target?(left>0?`Paper in ${left} day(s) (${fmtShort(parse(target))}).`:left===0?'Paper is today.':'Paper date passed.'):'')+
       `</div></div>`;
   });
-  return h;
+  return h+renderMocks();
 }
+
+/* ---------- mock test log ---------- */
+const mkPct=m=>(Number(m.outOf)>0)?Math.round(1000*Number(m.marks)/Number(m.outOf))/10:0;
+const mkSort=(a,b)=>a.date.localeCompare(b.date)||(a.u||0)-(b.u||0);
+function mockGroups(){
+  const ids=new Set(db.subjects.map(x=>x.id)),g=[];
+  db.subjects.forEach(x=>{const l=db.mocks.filter(m=>m.paper===x.id);if(l.length)g.push({name:(x.emoji||'📘')+' '+x.name,list:l.sort(mkSort)})});
+  const gen=db.mocks.filter(m=>!m.paper||!ids.has(m.paper));
+  if(gen.length)g.push({name:'📝 General / other',list:gen.sort(mkSort)});
+  return g;
+}
+function renderMocks(){
+  let h=`<div class="sec"><div class="sh"><b>Mock tests</b><span class="grow"></span><small>${plural(db.mocks.length,'attempt')}</small></div>`;
+  const groups=mockGroups();
+  if(!groups.length)return h+`<p class="hint">Log every mock test you take. For each paper you will see your best, latest and average marks.</p></div>`;
+  groups.forEach(g=>{
+    const ps=g.list.map(mkPct),best=Math.max(...ps),last=ps[ps.length-1],avg=Math.round(10*ps.reduce((a,b)=>a+b,0)/ps.length)/10;
+    const bars=g.list.slice(-12).map(m=>`<i style="height:${Math.max(4,Math.min(100,mkPct(m)))}%" title="${esc(fmtShort(parse(m.date)))}: ${mkPct(m)}%"></i>`).join('');
+    h+=`<div class="card" style="margin-top:8px"><div class="sh"><b>${esc(g.name)}</b><span class="grow"></span><small>${plural(g.list.length,'attempt')}</small></div>`+
+      `<div class="mkchips"><span>Best <b>${fmtN(best)}%</b></span><span>Latest <b>${fmtN(last)}%</b></span><span>Average <b>${fmtN(avg)}%</b></span></div>`+
+      (g.list.length>1?`<div class="mktrend">${bars}</div>`:'')+
+      g.list.slice().reverse().map(m=>`<div class="mkrow" data-a="editMock" data-id="${m.id}"><span class="dt">${esc(fmtShort(parse(m.date)))}</span><span class="sc">${fmtN(m.marks)}/${fmtN(m.outOf)}</span><span class="pc">${fmtN(mkPct(m))}%</span><span class="nt">${esc((m.notes||'').split('\n')[0])}</span></div>`).join('')+`</div>`;
+  });
+  return h+'</div>';
+}
+const mdlg=$('#mkDlg');let mEditing=null;
+function openMock(id){
+  mEditing=id?db.mocks.find(m=>m.id===id):null;
+  $('#mkHead').textContent=mEditing?'Edit mock test':'Add mock test';
+  $('#mkPaper').innerHTML=`<option value="">General / no paper</option>`+db.subjects.map(x=>`<option value="${x.id}">${esc((x.emoji||'📘')+' '+x.name)}</option>`).join('');
+  $('#mkPaper').value=mEditing?(mEditing.paper||''):'';
+  $('#mkDate').value=mEditing?mEditing.date:ds(today());
+  $('#mkMarks').value=mEditing?mEditing.marks:'';
+  $('#mkOut').value=mEditing?mEditing.outOf:(localStorage.getItem('planner.mkout')||100);
+  $('#mkNotes').value=mEditing?mEditing.notes||'':'';
+  $('#mkDel').style.display=mEditing?'':'none';
+  mdlg.showModal();
+}
+$('#mkCancel').onclick=()=>mdlg.close();
+$('#mkDel').onclick=()=>{
+  if(!mEditing||!confirm('Delete this mock test?'))return;
+  db.mocks=db.mocks.filter(m=>m.id!==mEditing.id);
+  save();mdlg.close();render();
+};
+$('#mkForm').addEventListener('submit',ev=>{
+  const marks=Number($('#mkMarks').value),outOf=Number($('#mkOut').value),date=$('#mkDate').value;
+  if(!date||$('#mkMarks').value===''||!(outOf>0)||!(marks>=0)){ev.preventDefault();alert('Enter the date, marks scored and total marks.');return}
+  if(marks>outOf){ev.preventDefault();alert('Marks scored cannot be more than the total marks.');return}
+  const o={id:mEditing?mEditing.id:uid(),paper:$('#mkPaper').value,date,marks,outOf,notes:$('#mkNotes').value.trim()};
+  if(mEditing)Object.assign(mEditing,o);else db.mocks.push(o);
+  localStorage.setItem('planner.mkout',String(outOf));
+  save();render();
+});
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-a]');if(!t)return;
+  if(t.dataset.a==='showDl')showPop();
+  else if(t.dataset.a==='newMock')openMock(null);
+  else if(t.dataset.a==='editMock')openMock(t.dataset.id);
+});
 function backupBanner(){
   const lb=Math.max(db.meta.lastBackup||0,Number(localStorage.getItem('planner.lastSync'))||0)||null;
   const days=lb?Math.floor((Date.now()-lb)/864e5):null;
@@ -714,6 +859,7 @@ function render(){
   document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=(view==='projects'||view==='study')?'none':'');
   let h=deadlineBanner()+streakBanner()+backupBanner();
   h+=view==='month'?renderMonth():view==='week'?renderWeek():view==='day'?renderDay():view==='projects'?renderProjects():renderStudy();
+  {const tt=$('#title').textContent;$('#title').innerHTML=esc(tt)+statSub()}
   $('#app').innerHTML=h;updateStreakBtn();updateSyncBtn();layoutFit();
 }
 
@@ -1051,7 +1197,7 @@ function bkInfo(){
   const lb=Math.max(db.meta.lastBackup||0,Number(localStorage.getItem('planner.lastSync'))||0)||null;
   {const c=ghCfg();$('#gRepo').value=c?c.repo:'';$('#gToken').placeholder=c?'(token saved — leave blank to keep)':'github_pat_…'}
   setStatus();
-  $('#bkInfo').textContent=`${db.events.length} events/deadlines, ${db.todos.length} to-dos, ${db.projects.length} projects, ${Object.keys(db.notes).length} notes. `+(lb?'Last backup: '+new Date(lb).toLocaleString():'No backup yet.');
+  $('#bkInfo').textContent=`${db.events.length} events/deadlines, ${db.todos.length} to-dos, ${db.projects.length} projects, ${db.mocks.length} mock tests, ${Object.keys(db.notes).length} notes. `+(lb?'Last backup: '+new Date(lb).toLocaleString():'No backup yet.');
 }
 $('#file').onchange=async ev=>{
   const f=ev.target.files[0];if(!f)return;
