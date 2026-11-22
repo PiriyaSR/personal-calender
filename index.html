@@ -30,17 +30,18 @@ main{padding:12px;max-width:1200px;margin:0 auto}
 .banner.warn{border-color:var(--warn)}
 .dlrow{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:4px 0}
 .mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;align-items:stretch}
-.dow{font-size:12px;font-weight:700;color:var(--mute);text-align:center;padding:2px}
-.cell{background:var(--card);border:1px solid var(--line);border-radius:8px;min-height:84px;padding:4px;cursor:pointer;overflow-wrap:anywhere;word-break:break-word}
+.dow{font-size:12px;font-weight:700;color:var(--mute);text-align:center;padding:4px 2px;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden;white-space:nowrap}
+.hin{width:72px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:8px;min-height:140px;padding:6px;cursor:pointer;overflow-wrap:anywhere;word-break:break-word}
 .cell.out{opacity:.45}
 .cell.today{border:2px solid var(--accent)}
-.cell .n{font-size:12px;font-weight:700;display:flex;justify-content:space-between;gap:2px}
+.cell .n{font-size:12px;font-weight:700;display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px}
 .ptag{font-size:10px;font-weight:600;background:var(--accent2);color:var(--accent);border-radius:4px;padding:0 3px}
-.chip{display:block;font-size:11px;border-radius:4px;padding:2px 4px;margin-top:2px;color:#fff;line-height:1.25}
-.emos{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;font-size:16px;line-height:1.1}
+.chip{display:block;font-size:12px;border-radius:4px;padding:3px 5px;margin-top:3px;color:#fff;line-height:1.25}
+.emos{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;font-size:20px;line-height:1.1}
 .emo.dn,.chip.dn,.ev.dn{opacity:.55;text-decoration:line-through}
 .cnt{font-size:11px;color:var(--mute);margin-top:2px}
-.mtd{font-size:11px;color:var(--ink);margin-top:2px;line-height:1.25}
+.mtd{font-size:12px;color:var(--ink);margin-top:3px;line-height:1.25}
 .wgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:stretch}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0;overflow-wrap:anywhere}
 .card.today{border:2px solid var(--accent)}
@@ -73,6 +74,10 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
 .emrow button{font-size:20px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:2px 6px;cursor:pointer}
 .emrow button.on{border-color:var(--accent);background:var(--accent2)}
 .wide{grid-column:1/-1}.wide textarea{min-height:120px}
+.wbars{display:flex;gap:6px;align-items:flex-end;height:90px;margin-top:10px}
+.wb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:2px}
+.wbar{width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
+.wb small{font-size:10px;color:var(--mute);line-height:1}
 .bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:6px}
 .dots{display:flex;gap:4px;margin:8px 0}.dot{width:18px;height:18px;border-radius:5px;background:var(--line)}.dot.on{background:var(--accent)}
@@ -82,7 +87,7 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
 .repbox{border-top:1px solid var(--line);margin-top:12px;padding-top:2px}
 .repbox input[type=date],.repbox input[type=number],.repbox select{margin-top:6px}
 @media (max-width:760px){.wgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:640px){.cell{min-height:64px;padding:3px}.chip{font-size:10px;padding:1px 3px}#title{min-width:0;font-size:14px}.tabs button{padding:6px 7px;font-size:13px}.mtd{font-size:10px}.ev{font-size:12px}}
+@media (max-width:640px){.cell{min-height:112px;padding:3px}.cell .n{font-size:10px}.cell .n>span:first-child{white-space:nowrap}.dow{font-size:11px;padding:3px 0}.chip{font-size:10px;padding:1px 3px}#title{min-width:0;font-size:14px}.tabs button{padding:6px 7px;font-size:13px}.mtd{font-size:10px}.ev{font-size:12px}}
 </style>
 </head>
 <body>
@@ -100,9 +105,10 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
       <button data-a="view" data-v="projects">Projects</button>
       <button data-a="view" data-v="study">Study</button>
     </div>
-    <span class="grow"></span>
+  </div>
+  <div class="row" style="margin-top:6px;flex-wrap:nowrap">
     <button class="btn" data-a="prev">&lsaquo;</button>
-    <div id="title"></div>
+    <div id="title" class="grow"></div>
     <button class="btn" data-a="next">&rsaquo;</button>
     <button class="btn" data-a="today">Today</button>
   </div>
@@ -182,6 +188,28 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
   <div id="chBtns"></div>
 </dialog>
 
+<dialog id="lgDlg">
+  <form method="dialog" id="lgForm">
+    <b>Log study time</b>
+    <label>Paper</label><select id="lgSub"></select>
+    <label>Hours studied (for example 1.5)</label><input type="number" id="lgHrs" min="0.25" max="24" step="0.25" required>
+    <label id="lgCountWrap" style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="lgCount" checked style="width:18px;height:18px"> Also count as recorded lecture hours watched</label>
+    <div class="row" style="margin-top:14px"><span class="grow"></span><button type="button" class="btn" id="lgCancel">Cancel</button><button class="btn pri">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="rvDlg">
+  <form method="dialog" id="rvForm">
+    <b>Add revision reminders</b>
+    <p style="font-size:12px;color:var(--mute);margin:6px 0 0">Enter what you studied. The app adds a revision to-do on each future day you choose.</p>
+    <label>Topic studied</label><input type="text" id="rvTopic" required placeholder="e.g. Time of Supply">
+    <label>Paper (optional)</label><select id="rvSub"></select>
+    <label>Date you studied it</label><input type="date" id="rvDate" required>
+    <label>Revise after how many days (comma separated)</label><input type="text" id="rvInt" placeholder="1,7,21">
+    <div class="row" style="margin-top:14px"><span class="grow"></span><button type="button" class="btn" id="rvCancel">Cancel</button><button class="btn pri">Add</button></div>
+  </form>
+</dialog>
+
 <dialog id="sjDlg">
   <form method="dialog" id="sjForm">
     <b id="sjHead">Paper</b>
@@ -192,8 +220,8 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
     <label>Lecture type</label>
     <select id="sjKind"><option value="recorded">Recorded (progress in %)</option><option value="live">Live (counted in days)</option></select>
     <div class="two">
-      <div><label id="sjTotalL">Total lecture hours (optional)</label><input type="number" id="sjTotal" min="0" step="any"></div>
-      <div><label id="sjDoneL">% completed (0–100)</label><input type="number" id="sjDone" min="0" step="any"></div>
+      <div><label id="sjTotalL">Total lecture hours</label><input type="number" id="sjTotal" min="0" step="any"></div>
+      <div><label id="sjDoneL">Hours watched so far</label><input type="number" id="sjDone" min="0" step="any"></div>
     </div>
     <label>Exam date for this paper (optional)</label><input type="date" id="sjExam">
     <div class="row" style="margin-top:14px">
@@ -249,8 +277,16 @@ const CATS={General:'#1f6f5c',Study:'#3b6fb6',Exam:'#b4531a',Work:'#7a4fb0',Pers
 const EMOJIS=['📚','📝','🎯','⏰','🧾','📊','💰','💼','🎥','✅','⚠️','🔥','📞','🏥','🛒','✈️','🎂','🏋️','🙏','🏠','📅','💡','📌','☕'];
 
 const KEY='planner.v1';
-function fresh(){return{v:3,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],meta:{}}}
-function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?Object.assign(fresh(),x):fresh()}catch(e){return fresh()}}
+function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],hlog:{},meta:{}}}
+function migrate(d){
+  if((d.v||0)<4){
+    (d.subjects||[]).forEach(s=>{if(s.kind==='recorded')s.done=s.total>0?Math.round(s.total*(Number(s.done)||0)/100*10)/10:0});
+    d.v=4;
+  }
+  if(!d.hlog)d.hlog={};
+  return d;
+}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?migrate(Object.assign(fresh(),x)):fresh()}catch(e){return fresh()}}
 let db=load();
 if(!db.meta)db.meta={};
 function save(silent){if(!silent){db.meta.log=db.meta.log||{};db.meta.log[ds(new Date())]=1}db.meta.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){alert('Could not save: storage full or blocked.')}}
@@ -333,7 +369,7 @@ function renderMonth(){
         ?open.map(x=>`<div class="mtd">☐ ${esc(x.text)}</div>`).join('')+(td.length-open.length?`<div class="cnt">✔ ${td.length-open.length} done</div>`:'')
         :`<div class="cnt">☑ ${open.length}</div>`;
     }
-    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span>${d.getDate()}</span>${tags}</div>${body}</div>`;
+    h+=`<div class="cell ${d.getMonth()!==m?'out':''} ${k===t?'today':''}" data-a="goDay" data-d="${k}"><div class="n"><span>${DOW[i%7]} ${d.getDate()}</span>${tags}</div>${body}</div>`;
   }
   h+='</div>';
   h+=`<div class="sec"><h2>Month goals &amp; notes</h2>${noteBox('m:'+y+'-'+pad(m+1),'Goals, deadlines, things to remember this month…')}</div>`;
@@ -362,7 +398,7 @@ function renderDay(){
   if(pl)h+=`<div class="card" style="margin-bottom:10px">${db.projects.map(p=>{const w=projWeekOf(p,k);return w?`<div class="pline">${esc(p.emoji||'📘')} ${esc(p.name)} · Week ${w.w} of ${w.total} · Day ${w.day}</div>`:''}).join('')}</div>`;
   h+=`<div class="card"><div class="row"><b class="grow">Schedule &amp; deadlines</b><button class="btn pri" data-a="newEv" data-d="${k}">+ Add</button></div>`+
     (evsOn(k).map(evHtml).join('')||'<p style="color:var(--mute)">Nothing scheduled.</p>')+`</div>`;
-  h+=`<div class="card sec"><div class="row"><b class="grow">To-do</b><button class="btn" data-a="newRepTodo" data-d="${k}">🔁 Repeating to-do</button>${carry?`<button class="btn" data-a="carry">Carry over ${carry} from yesterday</button>`:''}</div>${todoBlock(k)}</div>`;
+  h+=`<div class="card sec"><div class="row"><b class="grow">To-do</b><button class="btn" data-a="newRepTodo" data-d="${k}">🔁 Repeating to-do</button><button class="btn" data-a="newRev" data-d="${k}">🧠 Revision</button>${carry?`<button class="btn" data-a="carry">Carry over ${carry} from yesterday</button>`:''}</div>${todoBlock(k)}</div>`;
   h+=`<div class="sec"><h2>Day notes</h2>${noteBox('d:'+k,'Notes, study log, thoughts for today…')}</div>`;
   return h;
 }
@@ -437,8 +473,9 @@ function openStreak(){
 }
 
 /* ---------- study tracker ---------- */
-function pct(s){return s.kind==='live'?(s.total>0?Math.min(100,Math.round(100*s.done/s.total)):0):Math.min(100,Math.max(0,Math.round(Number(s.done)||0)))}
-function remHours(s){return(s.kind==='recorded'&&s.total>0)?s.total*(100-pct(s))/100:0}
+const fmtN=n=>String(Math.round((Number(n)||0)*100)/100);
+function pct(s){return s.total>0?Math.min(100,Math.round(100*(Number(s.done)||0)/s.total)):0}
+function remHours(s){return(s.kind==='recorded'&&s.total>0)?Math.max(0,s.total-(Number(s.done)||0)):0}
 function renderStudy(){
   $('#title').textContent='Study tracker';
   const t=ds(today()),start=db.meta.studyStart||'2026-11-25',ex=db.meta.examDate||'';
@@ -448,19 +485,24 @@ function renderStudy(){
   const subs=db.subjects;
   const avg=subs.length?Math.round(subs.reduce((a,s)=>a+pct(s),0)/subs.length):0;
   const remH=subs.reduce((a,s)=>a+remHours(s),0);
+  const hsum=k=>Object.values((db.hlog||{})[k]||{}).reduce((a,b)=>a+b,0);
+  let wk7=0;for(let i=0;i<7;i++)wk7+=hsum(ds(addDays(today(),-i)));
+  const target=Number(db.meta.target)||6;
+  let bars='';
+  for(let i=6;i>=0;i--){const dd=addDays(today(),-i),v=hsum(ds(dd));bars+=`<div class="wb"><div class="wbar" style="height:${Math.min(100,Math.round(100*v/target))}%"></div><small>${fmtN(v)}</small><small>${DOW[(dd.getDay()+6)%7][0]}</small></div>`}
   let h=`<div class="card"><div class="two"><div><label>Studies start</label><input type="date" data-meta="studyStart" value="${esc(start)}"></div><div><label>Exams start (optional)</label><input type="date" data-meta="examDate" value="${esc(ex)}"></div></div>`+
     `<p style="margin:10px 0 2px"><b>${startTxt}</b>${exLeft!==null?` · <b>${exLeft>0?exLeft+' days to exams':exLeft===0?'Exams start today':'Exams have started'}</b>`:''}</p>`+
     `<div class="bar"><i style="width:${avg}%"></i></div><div>Overall progress: <b>${avg}%</b> across ${subs.length} paper(s)</div>`+
-    (remH>0?`<div style="color:var(--mute);font-size:13px">Recorded lectures left: about ${remH.toFixed(1)} hrs${exLeft>0?`, so about ${(remH/exLeft).toFixed(1)} hrs/day to finish before exams`:''}</div>`:'')+`</div>`;
-  h+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="newSub">+ Add paper</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
+    `<div style="margin-top:10px"><div class="row"><b>Study hours today: ${fmtN(hsum(t))} / ${fmtN(target)}</b><span class="grow"></span><span style="font-size:13px">Daily target <input type="number" class="hin" min="0.5" step="0.5" data-meta="target" value="${target}" style="width:64px"></span></div><div class="bar"><i style="width:${Math.min(100,Math.round(100*hsum(t)/target))}%"></i></div><div class="wbars">${bars}</div><div style="font-size:12px;color:var(--mute);margin-top:4px">Last 7 days, today on the right · ${fmtN(wk7)} hrs in total</div></div>`+(remH>0?`<div style="color:var(--mute);font-size:13px">Recorded lectures left: about ${remH.toFixed(1)} hrs${exLeft>0?`, so about ${(remH/exLeft).toFixed(1)} hrs/day to finish before exams`:''}</div>`:'')+`</div>`;
+  h+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="logStudy">+ Log study time</button><button class="btn" data-a="newRev">🧠 Add revision</button><button class="btn" data-a="newSub">+ Add paper</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
   subs.forEach(s=>{
     const p=pct(s),live=s.kind==='live';
     const target=s.exam||ex,left=target?daysBetween(t,target):null,rh=remHours(s);
     h+=`<div class="card sec"><div class="row"><b class="grow">${esc(s.emoji||'📘')} ${esc(s.name)}</b><small style="color:var(--mute)">${live?'Live':'Recorded'}</small><button class="btn" data-a="editSub" data-id="${s.id}">Edit</button></div>`+
       `<div class="bar"><i style="width:${p}%"></i></div>`+
-      `<div class="row"><span><b>${p}%</b>${live?` · ${s.done}/${s.total||'?'} days`:''}</span><span class="grow"></span><button class="btn" data-a="subStep" data-id="${s.id}" data-d="-1">${live?'−1 day':'−5%'}</button><button class="btn pri" data-a="subStep" data-id="${s.id}" data-d="1">${live?'+1 day':'+5%'}</button></div>`+
+      `<div class="row"><span><b>${p}%</b> · ${fmtN(s.done)}/${s.total||'?'} ${live?'days':'hrs'}</span><span class="grow"></span>${live?`<button class="btn" data-a="subStep" data-id="${s.id}" data-d="-1">−1 day</button><button class="btn pri" data-a="subStep" data-id="${s.id}" data-d="1">+1 day</button>`:`<input type="number" class="hin" min="0" step="0.25" placeholder="hrs" data-hin="${s.id}"><button class="btn pri" data-a="addHrs" data-id="${s.id}">+ Add hrs</button>`}</div>`+
       `<div style="color:var(--mute);font-size:13px;margin-top:4px">`+
-      (live&&s.total>0?`${Math.max(0,s.total-s.done)} live day(s) left. `:'')+
+      (!live&&!(s.total>0)?'Tap Edit and enter the total lecture hours to see % progress. ':'')+(live&&s.total>0?`${Math.max(0,s.total-s.done)} live day(s) left. `:'')+
       (rh>0?`${rh.toFixed(1)} hrs left${left>0?`, about ${(rh/left).toFixed(1)} hrs/day`:''}. `:'')+
       (target?(left>0?`Paper in ${left} day(s) (${fmtShort(parse(target))}).`:left===0?'Paper is today.':'Paper date passed.'):'')+
       `</div></div>`;
@@ -726,9 +768,54 @@ $('#pjForm').addEventListener('submit',ev=>{
   save();render();
 });
 
+/* ---------- log study time ---------- */
+const ldlg=$('#lgDlg');
+const subOpts=first=>`<option value="">${first}</option>`+db.subjects.map(s=>`<option value="${s.id}">${esc((s.emoji||'📘')+' '+s.name)}</option>`).join('');
+function syncLg(){const s=db.subjects.find(x=>x.id===$('#lgSub').value);$('#lgCountWrap').style.display=(s&&s.kind==='recorded')?'flex':'none'}
+$('#lgSub').addEventListener('change',syncLg);
+function openLog(){
+  $('#lgSub').innerHTML=subOpts('Self-study / revision (no paper)');
+  $('#lgHrs').value='';$('#lgCount').checked=true;
+  syncLg();ldlg.showModal();
+}
+$('#lgCancel').onclick=()=>ldlg.close();
+$('#lgForm').addEventListener('submit',ev=>{
+  ev.preventDefault();
+  const h=Number($('#lgHrs').value);
+  if(!(h>0))return;
+  const s=db.subjects.find(x=>x.id===$('#lgSub').value),k=ds(new Date()),key=s?s.id:'self';
+  db.hlog=db.hlog||{};db.hlog[k]=db.hlog[k]||{};
+  db.hlog[k][key]=(db.hlog[k][key]||0)+h;
+  if(s&&s.kind==='recorded'&&$('#lgCount').checked){let a=(Number(s.done)||0)+h;if(s.total>0)a=Math.min(a,s.total);s.done=Math.round(a*100)/100}
+  save();ldlg.close();render();
+});
+
+/* ---------- revision scheduler ---------- */
+const rdlg=$('#rvDlg');
+function openRev(date){
+  $('#rvTopic').value='';
+  $('#rvDate').value=date||ds(today());
+  $('#rvInt').value=db.meta.revIntervals||'1,7,21';
+  $('#rvSub').innerHTML=subOpts('No paper');
+  rdlg.showModal();
+}
+$('#rvCancel').onclick=()=>rdlg.close();
+$('#rvForm').addEventListener('submit',ev=>{
+  ev.preventDefault();
+  const topic=$('#rvTopic').value.trim(),date=$('#rvDate').value;
+  if(!topic||!date)return;
+  const ints=$('#rvInt').value.split(/[ ,]+/).map(Number).filter(n=>n>0&&n<=365);
+  if(!ints.length){alert('Enter revision gaps in days, for example 1,7,21');return}
+  const sub=db.subjects.find(s=>s.id===$('#rvSub').value);
+  ints.forEach((n,i)=>db.todos.push({id:uid(),date:ds(addDays(parse(date),n)),text:`🧠 Revise: ${topic}${sub?' ('+sub.name+')':''} · revision ${i+1}`,done:false,rev:true}));
+  db.meta.revIntervals=ints.join(',');
+  save();rdlg.close();render();
+  alert(`Added ${ints.length} revision to-dos on: ${ints.map(n=>fmtShort(addDays(parse(date),n))).join(', ')}.`);
+});
+
 /* ---------- paper (subject) dialog ---------- */
 const sdlg=$('#sjDlg');let sEditing=null;
-function syncSj(){const live=$('#sjKind').value==='live';$('#sjTotalL').textContent=live?'Total live days':'Total lecture hours (optional)';$('#sjDoneL').textContent=live?'Days attended so far':'% completed (0–100)'}
+function syncSj(){const live=$('#sjKind').value==='live';$('#sjTotalL').textContent=live?'Total live days':'Total lecture hours';$('#sjDoneL').textContent=live?'Days attended so far':'Hours watched so far'}
 $('#sjKind').addEventListener('change',syncSj);
 function openSub(id){
   sEditing=id?db.subjects.find(s=>s.id===id):null;
@@ -748,7 +835,7 @@ $('#sjForm').addEventListener('submit',ev=>{
   const kind=$('#sjKind').value;
   const o={id:sEditing?sEditing.id:uid(),name:$('#sjName').value.trim(),emoji:$('#sjEmoji').value.trim(),kind,total:Math.max(0,Number($('#sjTotal').value)||0),done:Math.max(0,Number($('#sjDone').value)||0),exam:$('#sjExam').value};
   if(!o.name){ev.preventDefault();alert('Give the paper a name.');return}
-  if(kind==='recorded')o.done=Math.min(100,o.done);else if(o.total>0)o.done=Math.min(o.total,o.done);
+  if(o.total>0)o.done=Math.min(o.total,o.done);
   if(sEditing)Object.assign(sEditing,o);else db.subjects.push(o);
   save();render();
 });
@@ -777,7 +864,7 @@ $('#file').onchange=async ev=>{
     const x=JSON.parse(await f.text());
     if(!x||!Array.isArray(x.events)||!Array.isArray(x.todos))throw 0;
     if(!confirm('Replace everything on this device with the backup file?')){ev.target.value='';return}
-    db=Object.assign(fresh(),x);db.meta=db.meta||{};save(true);render();bkInfo();
+    db=migrate(Object.assign(fresh(),x));db.meta=db.meta||{};save(true);render();bkInfo();
   }catch(e){alert('That file is not a valid planner backup.')}
   ev.target.value='';
 };
@@ -808,6 +895,22 @@ document.addEventListener('click',e=>{
   }
   else if(a==='togWk'){const s=wkState(),k=t.dataset.key,now=t.dataset.now==='1';const cur=(k in s)?s[k]:now;s[k]=!cur;localStorage.setItem('planner.wk',JSON.stringify(s));render()}
   else if(a==='wkAll'){const p=db.projects.find(z=>z.id===t.dataset.id);if(p){const s=wkState(),v=t.dataset.v==='1';for(let w=1;w<=projWeeks(p);w++)s[p.id+':'+w]=v;localStorage.setItem('planner.wk',JSON.stringify(s));render()}}
+  else if(a==='addHrs'){
+    const s=db.subjects.find(z=>z.id===t.dataset.id);
+    const inp=document.querySelector(`[data-hin="${t.dataset.id}"]`);
+    const h=Number(inp&&inp.value);
+    if(!s||!(h>0)){alert('Type the hours you watched first, for example 1.5');return}
+    const before=Number(s.done)||0;
+    let after=before+h;if(s.total>0)after=Math.min(after,s.total);
+    after=Math.round(after*100)/100;
+    const add=Math.round((after-before)*100)/100;
+    if(add<=0){alert('This paper is already at its total hours.');return}
+    s.done=after;
+    db.hlog=db.hlog||{};const k=ds(new Date());db.hlog[k]=db.hlog[k]||{};db.hlog[k][s.id]=(db.hlog[k][s.id]||0)+add;
+    save();render();
+  }
+  else if(a==='logStudy')openLog();
+  else if(a==='newRev')openRev(t.dataset.d);
   else if(a==='newProj')openProj(null);
   else if(a==='editProj')openProj(t.dataset.id);
   else if(a==='pwDone'){if(t.checked)db.pw[t.dataset.key]=true;else delete db.pw[t.dataset.key];save()}
