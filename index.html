@@ -255,7 +255,21 @@ input[type=text],input[type=date],input[type=time],input[type=number],select{wid
   <div class="row" style="margin-top:8px">
     <button class="btn" data-a="notif">Enable reminders</button>
   </div>
-  <p style="color:var(--mute);font-size:12px">Your data is stored on this device. Download a backup regularly until cloud sync is added.</p>
+  <div class="repbox" style="margin-top:14px">
+    <b>Google backup &amp; sync</b>
+    <p id="gStatus" style="font-size:13px;margin:6px 0">Not connected.</p>
+    <label>Google Client ID (from your Google Cloud setup)</label>
+    <input type="text" id="gCid" placeholder="123456789-abc.apps.googleusercontent.com" autocomplete="off" autocapitalize="off">
+    <div class="row" style="margin-top:8px">
+      <button class="btn pri" data-a="gConnect">Connect Google</button>
+      <button class="btn" data-a="gSync">Sync now</button>
+      <button class="btn" data-a="gSnaps">Restore a daily backup</button>
+      <button class="btn del" data-a="gOff">Disconnect</button>
+    </div>
+    <div id="gSnapBox" style="display:none;margin-top:8px"><select id="gSnapSel"></select><button class="btn" style="margin-top:8px" data-a="gSnapGo">Restore this day</button></div>
+    <p style="color:var(--mute);font-size:12px;margin:8px 0 0">When connected, your data syncs to the Google account you pick, in a private app folder (not visible in Drive's file list). A copy of each day is kept for 30 days.</p>
+  </div>
+  <p style="color:var(--mute);font-size:12px">Without Google connected, your data lives only on this device, so download a backup regularly.</p>
   <div class="row"><span class="grow"></span><button class="btn" data-a="closeBk">Close</button></div>
   <input type="file" id="file" accept="application/json" hidden>
 </dialog>
@@ -289,9 +303,34 @@ function migrate(d){
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?migrate(Object.assign(fresh(),x)):fresh()}catch(e){return fresh()}}
 let db=load();
 if(!db.meta)db.meta={};
-function save(silent){if(!silent){db.meta.log=db.meta.log||{};db.meta.log[ds(new Date())]=1}db.meta.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){alert('Could not save: storage full or blocked.')}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){alert('Could not save: storage full or blocked.')}}
+function save(silent){if(!silent){db.meta.log=db.meta.log||{};db.meta.log[ds(new Date())]=1}db.meta.updated=Date.now();stamp();persist();scheduleSync()}
+function touch(k){db.ts=db.ts||{};db.ts[k]=Date.now()}
+
+/* ---------- change tracking (used by sync) ---------- */
+const COLS=['events','todos','projects','subjects'];
+const SIGKEY='planner.sig';
+const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h.toString(36)+s.length};
+const itemSig=it=>{const c=Object.assign({},it);delete c.u;return hash(JSON.stringify(c))};
+let sigs={};try{sigs=JSON.parse(localStorage.getItem(SIGKEY)||'{}')}catch(e){}
+function stamp(){
+  const now=Date.now(),seen={};
+  db.tomb=db.tomb||{};
+  COLS.forEach(c=>(db[c]=db[c]||[]).forEach(it=>{
+    const s=itemSig(it);seen[it.id]=1;
+    if(sigs[it.id]===undefined){if(!it.u)it.u=now;sigs[it.id]=s}
+    else if(sigs[it.id]!==s){it.u=now;sigs[it.id]=s}
+  }));
+  Object.keys(sigs).forEach(id=>{if(!seen[id]){db.tomb[id]=now;delete sigs[id]}});
+  try{localStorage.setItem(SIGKEY,JSON.stringify(sigs))}catch(e){}
+}
+function resetSigs(){
+  sigs={};
+  COLS.forEach(c=>(db[c]||[]).forEach(it=>{sigs[it.id]=itemSig(it)}));
+  try{localStorage.setItem(SIGKEY,JSON.stringify(sigs))}catch(e){}
+}
 const getNote=k=>db.notes[k]||'';
-const setNote=(k,v)=>{if(v)db.notes[k]=v;else delete db.notes[k];save()};
+const setNote=(k,v)=>{if(v)db.notes[k]=v;else delete db.notes[k];touch('n:'+k);save()};
 
 let view=localStorage.getItem('planner.view')||'month';
 if(!['month','week','day','projects','study'].includes(view))view='month';
@@ -510,7 +549,7 @@ function renderStudy(){
   return h;
 }
 function backupBanner(){
-  const lb=db.meta.lastBackup;
+  const lb=Math.max(db.meta.lastBackup||0,Number(localStorage.getItem('planner.lastSync'))||0)||null;
   const days=lb?Math.floor((Date.now()-lb)/864e5):null;
   if(!db.events.length&&!db.todos.length&&!Object.keys(db.notes).length&&!db.projects.length)return '<div class="banner">Welcome. Tap a day to start, or use Backup → Restore if you have a saved file.</div>';
   if(days===null||days>=1)return `<div class="banner warn">${days===null?'No backup yet.':'Last backup '+days+' day(s) ago.'} Open <b>Backup</b> and download one.</div>`;
@@ -757,8 +796,8 @@ $('#pjDel').onclick=()=>{
   if(!pEditing||!confirm('Delete this project and its weekly notes?'))return;
   const id=pEditing.id;
   db.projects=db.projects.filter(p=>p.id!==id);
-  Object.keys(db.notes).forEach(k=>{if(k.startsWith('p:'+id+':'))delete db.notes[k]});
-  Object.keys(db.pw).forEach(k=>{if(k.startsWith(id+':'))delete db.pw[k]});
+  Object.keys(db.notes).forEach(k=>{if(k.startsWith('p:'+id+':')){delete db.notes[k];touch('n:'+k)}});
+  Object.keys(db.pw).forEach(k=>{if(k.startsWith(id+':')){delete db.pw[k];touch('w:'+k)}});
   save();pdlg.close();render();
 };
 $('#pjForm').addEventListener('submit',ev=>{
@@ -808,7 +847,7 @@ $('#rvForm').addEventListener('submit',ev=>{
   if(!ints.length){alert('Enter revision gaps in days, for example 1,7,21');return}
   const sub=db.subjects.find(s=>s.id===$('#rvSub').value);
   ints.forEach((n,i)=>db.todos.push({id:uid(),date:ds(addDays(parse(date),n)),text:`🧠 Revise: ${topic}${sub?' ('+sub.name+')':''} · revision ${i+1}`,done:false,rev:true}));
-  db.meta.revIntervals=ints.join(',');
+  db.meta.revIntervals=ints.join(',');touch('m:revIntervals');
   save();rdlg.close();render();
   alert(`Added ${ints.length} revision to-dos on: ${ints.map(n=>fmtShort(addDays(parse(date),n))).join(', ')}.`);
 });
@@ -855,7 +894,9 @@ function exportData(){
   bkInfo();render();
 }
 function bkInfo(){
-  const lb=db.meta.lastBackup;
+  const lb=Math.max(db.meta.lastBackup||0,Number(localStorage.getItem('planner.lastSync'))||0)||null;
+  $('#gCid').value=localStorage.getItem('planner.cid')||'';
+  setStatus();
   $('#bkInfo').textContent=`${db.events.length} events/deadlines, ${db.todos.length} to-dos, ${db.projects.length} projects, ${Object.keys(db.notes).length} notes. `+(lb?'Last backup: '+new Date(lb).toLocaleString():'No backup yet.');
 }
 $('#file').onchange=async ev=>{
@@ -864,7 +905,7 @@ $('#file').onchange=async ev=>{
     const x=JSON.parse(await f.text());
     if(!x||!Array.isArray(x.events)||!Array.isArray(x.todos))throw 0;
     if(!confirm('Replace everything on this device with the backup file?')){ev.target.value='';return}
-    db=migrate(Object.assign(fresh(),x));db.meta=db.meta||{};save(true);render();bkInfo();
+    applyRestore(x);
   }catch(e){alert('That file is not a valid planner backup.')}
   ev.target.value='';
 };
@@ -913,7 +954,7 @@ document.addEventListener('click',e=>{
   else if(a==='newRev')openRev(t.dataset.d);
   else if(a==='newProj')openProj(null);
   else if(a==='editProj')openProj(t.dataset.id);
-  else if(a==='pwDone'){if(t.checked)db.pw[t.dataset.key]=true;else delete db.pw[t.dataset.key];save()}
+  else if(a==='pwDone'){if(t.checked)db.pw[t.dataset.key]=true;else delete db.pw[t.dataset.key];touch('w:'+t.dataset.key);save()}
   else if(a==='tog'){const x=db.todos.find(z=>z.id===t.dataset.id);x.done=t.checked;save();render()}
   else if(a==='delTodo'){
     const x=db.todos.find(z=>z.id===t.dataset.id);if(!x)return;
@@ -945,7 +986,7 @@ document.addEventListener('keydown',e=>{
     const n=document.querySelector(`[data-add="${i.dataset.add}"]`);n&&n.focus();
   }
 });
-document.addEventListener('change',e=>{const i=e.target.closest&&e.target.closest('[data-meta]');if(i){db.meta[i.dataset.meta]=i.value;save(true);render()}});
+document.addEventListener('change',e=>{const i=e.target.closest&&e.target.closest('[data-meta]');if(i){db.meta[i.dataset.meta]=i.value;touch('m:'+i.dataset.meta);save(true);render()}});
 let nt;
 document.addEventListener('input',e=>{
   const n=e.target.closest&&e.target.closest('[data-note]');
@@ -989,11 +1030,230 @@ function checkReminders(){
     }
   });
 }
+/* ================= Google Drive sync ================= */
+const SETTINGS=['studyStart','examDate','target','revIntervals'];
+const MAIN='planner-data.json',KEEP=30,SNAP_RE=/^planner-\d{4}-\d{2}-\d{2}\.json$/;
+const DRV='https://www.googleapis.com/drive/v3/files',UPL='https://www.googleapis.com/upload/drive/v3/files';
+let tok=null,tokExp=0,syncing=false,again=false,st=null,gMsg='',needSync=!!localStorage.getItem('planner.gon'),lastTry=0;
+const gCid=()=>localStorage.getItem('planner.cid')||'';
+const gConnected=()=>!!localStorage.getItem('planner.gon')&&!!gCid();
+const tokOk=()=>!!tok&&Date.now()<tokExp-60000;
+
+function mergeDocs(A,B){
+  const out=fresh(),tomb={};
+  [A.tomb||{},B.tomb||{}].forEach(t=>Object.keys(t).forEach(k=>{tomb[k]=Math.max(tomb[k]||0,t[k])}));
+  const cutoff=Date.now()-120*864e5;
+  Object.keys(tomb).forEach(k=>{if(tomb[k]<cutoff)delete tomb[k]});
+  out.tomb=tomb;
+  COLS.forEach(c=>{
+    const m={};
+    (A[c]||[]).concat(B[c]||[]).forEach(it=>{const cur=m[it.id];if(!cur||(it.u||0)>(cur.u||0))m[it.id]=it});
+    out[c]=Object.values(m).filter(it=>!(tomb[it.id]>(it.u||0)));
+  });
+  const tsA=A.ts||{},tsB=B.ts||{};out.ts={};
+  function keyed(oa,ob,prefix,keys){
+    const res={},ks=new Set(keys||[...Object.keys(oa||{}),...Object.keys(ob||{})]);
+    if(!keys)[tsA,tsB].forEach(t=>Object.keys(t).forEach(k=>{if(k.startsWith(prefix))ks.add(k.slice(prefix.length))}));
+    ks.forEach(k=>{
+      const ta=tsA[prefix+k]||0,tb=tsB[prefix+k]||0;
+      let src;
+      if(ta>tb)src=oa;else if(tb>ta)src=ob;else src=(oa&&k in oa)?oa:ob;
+      if(src&&k in src)res[k]=src[k];
+      if(ta||tb)out.ts[prefix+k]=Math.max(ta,tb);
+    });
+    return res;
+  }
+  out.notes=keyed(A.notes,B.notes,'n:');
+  out.pw=keyed(A.pw,B.pw,'w:');
+  const am=A.meta||{},bm=B.meta||{},meta=Object.assign({},am),sm=keyed(am,bm,'m:',SETTINGS);
+  SETTINGS.forEach(k=>{if(k in sm)meta[k]=sm[k];else delete meta[k]});
+  meta.log=Object.assign({},am.log,bm.log);
+  meta.updated=Math.max(am.updated||0,bm.updated||0);
+  out.meta=meta;
+  const h={};
+  [A.hlog||{},B.hlog||{}].forEach(src=>Object.keys(src).forEach(d=>{h[d]=h[d]||{};Object.keys(src[d]).forEach(s=>{h[d][s]=Math.max(h[d][s]||0,src[d][s])})}));
+  out.hlog=h;out.v=4;
+  return out;
+}
+// Used when you restore a backup: makes the restored data win over what is already in the cloud.
+function markAsNewest(remote){
+  const now=Date.now();
+  db.tomb={};db.ts={};
+  COLS.forEach(c=>(db[c]||[]).forEach(it=>{it.u=now}));
+  if(remote){
+    const mine=new Set();COLS.forEach(c=>db[c].forEach(it=>mine.add(it.id)));
+    COLS.forEach(c=>(remote[c]||[]).forEach(it=>{if(!mine.has(it.id))db.tomb[it.id]=now}));
+    Object.keys(remote.notes||{}).forEach(k=>{if(!(k in db.notes))db.ts['n:'+k]=now});
+    Object.keys(remote.pw||{}).forEach(k=>{if(!(k in db.pw))db.ts['w:'+k]=now});
+  }
+  Object.keys(db.notes).forEach(k=>{db.ts['n:'+k]=now});
+  Object.keys(db.pw).forEach(k=>{db.ts['w:'+k]=now});
+  SETTINGS.forEach(k=>{if(k in db.meta)db.ts['m:'+k]=now});
+}
+function applyRestore(x){
+  db=migrate(Object.assign(fresh(),x));db.meta=db.meta||{};
+  const now=Date.now();
+  COLS.forEach(c=>(db[c]||[]).forEach(it=>{it.u=now}));
+  db.tomb={};db.ts={};
+  save(true);render();bkInfo();
+  if(gConnected())syncNow({force:true});
+}
+
+function setStatus(m){
+  if(m!==undefined)gMsg=m;
+  const el=$('#gStatus');if(!el)return;
+  const ls=Number(localStorage.getItem('planner.lastSync'))||0;
+  el.textContent=gMsg||(gConnected()?'Connected.'+(ls?' Last synced '+new Date(ls).toLocaleString():' Tap Sync now.'):'Not connected.');
+}
+function softRender(n=0){
+  const a=document.activeElement;
+  const busy=(a&&/^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName))||document.querySelector('dialog[open]:not(#bkDlg)');
+  if(busy&&n<20){setTimeout(()=>softRender(n+1),3000);return}
+  render();
+}
+function loadGsi(){
+  return new Promise((res,rej)=>{
+    if(window.google&&google.accounts&&google.accounts.oauth2)return res();
+    const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
+    s.onload=()=>res();s.onerror=()=>rej(new Error('Could not reach Google (are you offline?)'));
+    document.head.appendChild(s);
+  });
+}
+const withTimeout=(p,ms,msg)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error(msg)),ms))]);
+async function getToken(interactive){
+  if(tokOk())return tok;
+  await loadGsi();
+  const cid=gCid();if(!cid)throw new Error('Add your Google Client ID first.');
+  return withTimeout(new Promise((res,rej)=>{
+    const tc=google.accounts.oauth2.initTokenClient({
+      client_id:cid,scope:'https://www.googleapis.com/auth/drive.appdata',
+      callback:r=>{if(r.error)return rej(new Error(r.error_description||r.error));tok=r.access_token;tokExp=Date.now()+(Number(r.expires_in)||3600)*1000;localStorage.setItem('planner.gon','1');res(tok)},
+      error_callback:e=>rej(new Error(e&&e.type==='popup_failed_to_open'?'The Google sign-in window was blocked. Tap Sync now again.':'Google sign-in was cancelled or failed.'))
+    });
+    tc.requestAccessToken({prompt:(interactive&&!localStorage.getItem('planner.gon'))?'select_account':''});
+  }),interactive?180000:30000,'Google sign-in timed out. Tap Sync now to try again.');
+}
+async function dfetch(url,opt){
+  const t=await getToken(false);
+  const o=Object.assign({},opt||{});o.headers=Object.assign({Authorization:'Bearer '+t},o.headers||{});
+  const r=await fetch(url,o);
+  if(r.status===401){tok=null;throw new Error('Google session expired. Tap Sync now.')}
+  if(!r.ok)throw new Error('Google Drive error '+r.status);
+  return r;
+}
+async function listFiles(){
+  const out=[];let pt='';
+  do{
+    const r=await dfetch(`${DRV}?spaces=appDataFolder&pageSize=100&fields=${encodeURIComponent('nextPageToken,files(id,name)')}&q=${encodeURIComponent('trashed=false')}${pt?'&pageToken='+encodeURIComponent(pt):''}`);
+    const j=await r.json();out.push(...(j.files||[]));pt=j.nextPageToken||'';
+  }while(pt);
+  return out;
+}
+const readFile=async id=>(await dfetch(`${DRV}/${id}?alt=media`)).json();
+async function writeFile(name,obj,id){
+  const meta=id?{}:{name,parents:['appDataFolder']},b='pl'+uid();
+  const body=`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(obj)}\r\n--${b}--`;
+  const r=await dfetch(`${UPL}${id?'/'+id:''}?uploadType=multipart&fields=id`,{method:id?'PATCH':'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body});
+  return (await r.json()).id;
+}
+function scheduleSync(ms){
+  if(!gConnected())return;
+  if(!tokOk()){needSync=true;return}
+  clearTimeout(st);st=setTimeout(()=>syncNow(),ms||15000);
+}
+async function syncNow(opts){
+  opts=opts||{};
+  if(syncing){again=true;return}
+  if(document.querySelector('dialog[open]:not(#bkDlg)')){clearTimeout(st);st=setTimeout(()=>syncNow(opts),8000);return}
+  syncing=true;lastTry=Date.now();setStatus('Syncing…');
+  try{
+    await getToken(!!opts.interactive);
+    const files=await listFiles();
+    const main=files.find(f=>f.name===MAIN);
+    let remote=null;
+    if(main){const r=await readFile(main.id);if(r&&Array.isArray(r.events))remote=migrate(Object.assign(fresh(),r))}
+    if(opts.force)markAsNewest(remote);
+    else if(remote)db=mergeDocs(db,remote);
+    resetSigs();persist();
+    const sname=`planner-${ds(new Date())}.json`,sf=files.find(f=>f.name===sname);
+    const h=hash(JSON.stringify(db));
+    if(opts.force||h!==localStorage.getItem('planner.lastHash')||!main||!sf){
+      await writeFile(MAIN,db,main&&main.id);
+      await writeFile(sname,db,sf&&sf.id);
+      const snaps=files.map(f=>f.name).filter(n=>SNAP_RE.test(n));
+      if(!sf)snaps.push(sname);
+      snaps.sort();
+      for(const n of snaps.slice(0,Math.max(0,snaps.length-KEEP))){const f=files.find(x=>x.name===n);if(f)await dfetch(`${DRV}/${f.id}`,{method:'DELETE'})}
+      localStorage.setItem('planner.lastHash',h);
+    }
+    localStorage.setItem('planner.lastSync',String(Date.now()));
+    needSync=false;setStatus('');
+    softRender();
+  }catch(e){
+    needSync=true;
+    setStatus(e instanceof TypeError?'Not synced: no internet connection. Your changes are saved on this device and will sync later.':'Not synced: '+(e&&e.message||'unknown error'));
+  }finally{
+    syncing=false;
+    if(again){again=false;scheduleSync(2000)}
+  }
+}
+async function openSnaps(){
+  try{
+    setStatus('Loading daily backups…');
+    const files=(await listFiles()).filter(f=>SNAP_RE.test(f.name)).sort((a,b)=>b.name.localeCompare(a.name));
+    setStatus('');
+    if(!files.length){alert('No daily backups found yet.');return}
+    $('#gSnapSel').innerHTML=files.map(f=>`<option value="${f.id}">${esc(f.name.slice(8,18))}</option>`).join('');
+    $('#gSnapBox').style.display='';
+  }catch(e){setStatus('Could not load backups: '+e.message)}
+}
+async function restoreSnap(){
+  const id=$('#gSnapSel').value;if(!id)return;
+  const label=$('#gSnapSel').selectedOptions[0].textContent;
+  if(!confirm(`Replace everything with the backup from ${label}? Changes made after that day will be lost on all your devices.`))return;
+  try{
+    setStatus('Restoring…');
+    const x=await readFile(id);
+    if(!x||!Array.isArray(x.events))throw new Error('Backup file is not valid.');
+    $('#gSnapBox').style.display='none';
+    applyRestore(x);
+  }catch(e){setStatus('Restore failed: '+e.message)}
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-a]');
+  if(t){
+    const a=t.dataset.a;
+    if(a==='gConnect'){
+      const cid=$('#gCid').value.trim();
+      if(!/\.apps\.googleusercontent\.com$/.test(cid)){alert('Paste the Client ID from Google Cloud. It ends with .apps.googleusercontent.com');return}
+      localStorage.setItem('planner.cid',cid);localStorage.removeItem('planner.gon');tok=null;
+      syncNow({interactive:true});return;
+    }
+    if(a==='gSync'){
+      const cid=$('#gCid').value.trim();if(cid&&cid!==gCid()){localStorage.setItem('planner.cid',cid)}
+      if(!gCid()){alert('Paste your Google Client ID first, then tap Connect Google.');return}
+      syncNow({interactive:true});return;
+    }
+    if(a==='gSnaps'){if(!gConnected()){alert('Connect Google first.');return}openSnaps();return}
+    if(a==='gSnapGo'){restoreSnap();return}
+    if(a==='gOff'){
+      if(!confirm('Disconnect Google? Your data stays on this device and in Drive, but stops syncing.'))return;
+      try{if(tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(tok,()=>{})}catch(_){}
+      tok=null;localStorage.removeItem('planner.gon');needSync=false;setStatus('Disconnected.');return;
+    }
+    return;
+  }
+  // A tap anywhere in the app lets Google sign-in open a window (browsers only allow that from a tap).
+  if(gConnected()&&needSync&&!syncing&&!tokOk()&&Date.now()-lastTry>60000&&!e.target.closest('dialog'))syncNow();
+});
+setInterval(()=>{if(gConnected()&&tokOk()&&!document.hidden&&!syncing)syncNow()},5*60000);
+
 setInterval(checkReminders,30000);
 let hiddenAt=0;
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){hiddenAt=Date.now();return}
   render();checkReminders();
+  if(gConnected()){if(tokOk()&&!syncing)syncNow();else if(hiddenAt&&Date.now()-hiddenAt>5*60000)needSync=true}
   if(hiddenAt&&Date.now()-hiddenAt>10*60000)showPop();
 });
 
