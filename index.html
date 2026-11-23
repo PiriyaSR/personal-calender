@@ -225,7 +225,7 @@ body:not(.nos) #app{padding-bottom:56px}
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v17</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v18</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -845,7 +845,7 @@ function insightsCard(subs){
   let h=`<div class="card sec"><b>🎯 Study insights</b>`;
   // 1. countdown
   const ex=subs.map(x=>({x,d:x.exam||gEx})).filter(o=>o.d).map(o=>({x:o.x,d:o.d,n:daysBetween(t,o.d)})).sort((a,b)=>a.n-b.n);
-  if(!ex.length)h+=`<p class="hint" style="margin:6px 0">Set <b>Exams start</b> (above) or an exam date on a paper to see the countdown and daily pace.</p>`;
+  if(!ex.length)h+=`<div class="srg" style="margin-top:8px">Exam countdown</div><div style="font-size:13px;color:#c0392b">No exam date yet, so pace cannot be worked out.</div><label>Exams start</label><input type="date" data-meta="examDate" value="">`;
   else{
     h+=`<div class="srg" style="margin-top:8px">Exam countdown</div>`;
     ex.slice(0,6).forEach(o=>{h+=`<div class="rvl"><span>${esc((o.x.emoji||'📘')+' '+o.x.name)}</span><b>${o.n>0?o.n+' days':o.n===0?'today':'done'} · ${dayLabel(o.d)}</b></div>`});
@@ -858,6 +858,12 @@ function insightsCard(subs){
     const left=Math.max(0,(x.total||0)-(x.done||0));
     if(left>0&&dl>0)need.push({x,left,perDay:left/dl,dl});
   });
+  const noTot=subs.filter(x=>x.kind!=='live'&&!(x.total>0)),noDate=subs.filter(x=>x.kind!=='live'&&x.total>0&&!(x.exam||gEx));
+  if(noTot.length||noDate.length){
+    h+=`<div class="srg" style="margin-top:10px">Needed for pace</div>`;
+    if(noTot.length)h+=`<div style="font-size:13px;margin:4px 0">❗ Total lecture hours missing for: <b>${noTot.map(x=>esc(x.name)).join(', ')}</b>. Open the paper, tap <b>Edit</b>, enter the total hours.</div>`;
+    if(noDate.length)h+=`<div style="font-size:13px;margin:4px 0">❗ No exam date for: <b>${noDate.map(x=>esc(x.name)).join(', ')}</b>. Set <b>Exams start</b> in Overview or an exam date on the paper.</div>`;
+  }
   if(need.length){
     const tot=need.reduce((a,o)=>a+o.perDay,0);
     h+=`<div class="srg" style="margin-top:10px">Pace needed (recorded lectures)</div>`;
@@ -867,7 +873,7 @@ function insightsCard(subs){
     h+=`<div class="srg" style="margin-top:10px">Suggested for today (${hrs(target)} h)</div>`;
     top.forEach(o=>{h+=`<div class="rvl"><span>${esc((o.x.emoji||'📘')+' '+o.x.name)}</span><b>${hrs(Math.max(0.5,target*o.perDay/tot))} h</b></div>`});
     h+=`<div class="hint">Share of your daily target in proportion to how much each paper still needs.</div>`;
-  }else if(!liveLeft)h+=`<p class="hint" style="margin:8px 0 0">Add total lecture hours to each recorded paper (Edit) and an exam date to see the daily pace.</p>`;
+  }else if(!noTot.length&&!noDate.length&&!liveLeft)h+=`<p class="hint" style="margin:8px 0 0">All recorded lectures are finished, so no pace is needed.</p>`;
   if(liveLeft)h+=`<div class="hint" style="margin-top:6px">Live classes left: about ${liveLeft} day(s) across live papers.</div>`;
   // 3. weak / next chapters
   const ch=db.chapters||[],name=id=>{const s=subs.find(z=>z.id===id);return s?(s.emoji||'📘')+' '+s.name:''};
