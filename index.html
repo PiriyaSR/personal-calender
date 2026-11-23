@@ -212,7 +212,8 @@ input[type=search]:focus{outline:2px solid var(--accent)}
 .todo .star{border:0;background:none;font-size:16px;cursor:pointer;padding:0 4px;color:var(--mute)}
 .top3{border-left:5px solid #e0a800}
 .inbox{border-left:5px solid #7a5ccf}.inrow{display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}.inrow .x{border:0;background:none;color:var(--mute);cursor:pointer}
-#fab{position:fixed;right:14px;bottom:16px;z-index:5;min-width:46px;height:46px;border-radius:23px;border:0;background:var(--accent);color:#fff;font-size:20px;box-shadow:0 3px 10px rgba(0,0,0,.3);cursor:pointer;padding:0 12px}
+#fab{position:fixed;right:10px;bottom:12px;z-index:5;min-width:38px;height:38px;border-radius:19px;opacity:.78;border:0;background:var(--accent);color:#fff;font-size:17px;box-shadow:0 2px 8px rgba(0,0,0,.25);cursor:pointer;padding:0 9px}
+body:not(.nos) #app{padding-bottom:56px}
 #fab span{font-size:13px;font-weight:700}
 .dpanel .dbody{padding-bottom:44px}
 </style>
@@ -220,7 +221,7 @@ input[type=search]:focus{outline:2px solid var(--accent)}
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v15</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v16</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -814,6 +815,50 @@ function syllabusHtml(sub){
   }
   return h+`</div>`;
 }
+function insightsCard(subs){
+  if(!subs.length)return '';
+  const t=ds(today()),target=Number(db.meta.target)||6,gEx=db.meta.examDate||'';
+  const hrs=n=>(Math.round(n*10)/10);
+  let h=`<div class="card sec"><b>🎯 Study insights</b>`;
+  // 1. countdown
+  const ex=subs.map(x=>({x,d:x.exam||gEx})).filter(o=>o.d).map(o=>({x:o.x,d:o.d,n:daysBetween(t,o.d)})).sort((a,b)=>a.n-b.n);
+  if(!ex.length)h+=`<p class="hint" style="margin:6px 0">Set <b>Exams start</b> (above) or an exam date on a paper to see the countdown and daily pace.</p>`;
+  else{
+    h+=`<div class="srg" style="margin-top:8px">Exam countdown</div>`;
+    ex.slice(0,6).forEach(o=>{h+=`<div class="rvl"><span>${esc((o.x.emoji||'📘')+' '+o.x.name)}</span><b>${o.n>0?o.n+' days':o.n===0?'today':'done'} · ${dayLabel(o.d)}</b></div>`});
+  }
+  // 2. pace + today's split
+  const need=[];let liveLeft=0;
+  subs.forEach(x=>{
+    const d=x.exam||gEx,dl=d?Math.max(1,daysBetween(t,d)):0;
+    if(x.kind==='live'){liveLeft+=Math.max(0,(x.total||0)-(x.done||0));return}
+    const left=Math.max(0,(x.total||0)-(x.done||0));
+    if(left>0&&dl>0)need.push({x,left,perDay:left/dl,dl});
+  });
+  if(need.length){
+    const tot=need.reduce((a,o)=>a+o.perDay,0);
+    h+=`<div class="srg" style="margin-top:10px">Pace needed (recorded lectures)</div>`;
+    h+=`<div class="rvl"><span>Hours per day to finish before exams</span><b>${hrs(tot)} h</b></div>`;
+    h+=`<div style="font-size:13px;margin:4px 0;color:${tot<=target?'#2e8b57':'#c0392b'}">${tot<=target?'✅ Within your '+target+' h/day target.':'⚠️ Above your '+target+' h/day target. Raise the target or cover some lectures faster.'}</div>`;
+    const top=need.slice().sort((a,b)=>b.perDay-a.perDay).slice(0,4);
+    h+=`<div class="srg" style="margin-top:10px">Suggested for today (${hrs(target)} h)</div>`;
+    top.forEach(o=>{h+=`<div class="rvl"><span>${esc((o.x.emoji||'📘')+' '+o.x.name)}</span><b>${hrs(Math.max(0.5,target*o.perDay/tot))} h</b></div>`});
+    h+=`<div class="hint">Share of your daily target in proportion to how much each paper still needs.</div>`;
+  }else if(!liveLeft)h+=`<p class="hint" style="margin:8px 0 0">Add total lecture hours to each recorded paper (Edit) and an exam date to see the daily pace.</p>`;
+  if(liveLeft)h+=`<div class="hint" style="margin-top:6px">Live classes left: about ${liveLeft} day(s) across live papers.</div>`;
+  // 3. weak / next chapters
+  const ch=db.chapters||[],name=id=>{const s=subs.find(z=>z.id===id);return s?(s.emoji||'📘')+' '+s.name:''};
+  const rev=ch.filter(c=>c.l&&!c.r),prac=ch.filter(c=>c.r&&!c.p),todo=ch.filter(c=>!c.l);
+  const lowMock=subs.filter(x=>{const m=(db.mocks||[]).filter(z=>z.subId===x.id).sort((a,b)=>a.date<b.date?1:-1)[0];return m&&mkPct(m)<50});
+  if(rev.length||prac.length||lowMock.length||todo.length){
+    h+=`<div class="srg" style="margin-top:10px">Focus next</div>`;
+    if(lowMock.length)h+=`<div class="rvl"><span>❗ Latest mock below 50%</span><b>${lowMock.map(x=>esc(x.name)).join(', ')}</b></div>`;
+    const list=(ic,l,arr)=>{if(arr.length)h+=`<div style="margin:6px 0 2px;font-size:13px"><b>${ic} ${l} (${arr.length})</b></div>`+arr.slice(0,5).map(c=>`<div class="rvl"><span>${esc(c.name)}</span><small>${esc(name(c.subId))}</small></div>`).join('')+(arr.length>5?`<div class="hint">+${arr.length-5} more</div>`:'')};
+    list('✍️','Lectures done, not revised yet',rev);list('🧪','Revised, not practised yet',prac);
+    if(!rev.length&&!prac.length&&todo.length)h+=`<div class="hint">${todo.length} chapter(s) still need their lectures.</div>`;
+  }
+  return h+`</div>`;
+}
 const mkPct=m=>m.outOf>0?Math.round(1000*m.marks/m.outOf)/10:0;
 function mockCard(subs){
   const ms=(db.mocks||[]).slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
@@ -851,7 +896,7 @@ function renderStudy(){
     `<div class="bar"><i style="width:${avg}%"></i></div><div>Overall progress: <b>${avg}%</b> across ${subs.length} paper(s)</div>`+
     `<div style="margin-top:10px"><div class="row"><b>Study hours today: ${fmtN(hsum(t))} / ${fmtN(target)}</b><span class="grow"></span><span style="font-size:13px">Daily target <input type="number" class="hin" min="0.5" step="0.5" data-meta="target" value="${target}" style="width:64px"></span></div><div class="bar"><i style="width:${Math.min(100,Math.round(100*hsum(t)/target))}%"></i></div><div class="wbars">${bars}</div><div style="font-size:12px;color:var(--mute);margin-top:4px">Last 7 days, today on the right · ${fmtN(wk7)} hrs in total</div></div>`+(remH>0?`<div style="color:var(--mute);font-size:13px">Recorded lectures left: about ${remH.toFixed(1)} hrs${exLeft>0?`, so about ${(remH/exLeft).toFixed(1)} hrs/day to finish before exams`:''}</div>`:'')+`</div>`;
   h+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="logStudy">+ Log study time</button><button class="btn" data-a="newRev">🧠 Add revision</button><button class="btn" data-a="newSub">+ Add paper</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
-  h+=mockCard(subs);
+  h+=insightsCard(subs)+mockCard(subs);
   subs.forEach(s=>{
     const p=pct(s),live=s.kind==='live';
     const target=s.exam||ex,left=target?daysBetween(t,target):null,rh=remHours(s);
