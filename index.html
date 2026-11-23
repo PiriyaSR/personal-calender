@@ -209,12 +209,18 @@ dialog .repbox,dialog form{max-width:100%}
 .rvl{display:flex;gap:8px;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}.rvl b{text-align:right}
 input[type=search]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none}
 input[type=search]:focus{outline:2px solid var(--accent)}
+.todo .star{border:0;background:none;font-size:16px;cursor:pointer;padding:0 4px;color:var(--mute)}
+.top3{border-left:5px solid #e0a800}
+.inbox{border-left:5px solid #7a5ccf}.inrow{display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}.inrow .x{border:0;background:none;color:var(--mute);cursor:pointer}
+#fab{position:fixed;right:14px;bottom:16px;z-index:5;min-width:46px;height:46px;border-radius:23px;border:0;background:var(--accent);color:#fff;font-size:20px;box-shadow:0 3px 10px rgba(0,0,0,.3);cursor:pointer;padding:0 12px}
+#fab span{font-size:13px;font-weight:700}
+.dpanel .dbody{padding-bottom:44px}
 </style>
 </head>
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v14</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v15</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -334,10 +340,22 @@ input[type=search]:focus{outline:2px solid var(--accent)}
   </form>
 </dialog>
 
+<dialog id="inDlg">
+  <form method="dialog" id="inForm">
+    <b>💡 Quick capture</b>
+    <p style="font-size:12px;color:var(--mute);margin:4px 0">Jot it down now. Decide the day later from the Inbox card at the top of a Day.</p>
+    <textarea id="inText" rows="4" style="width:100%" placeholder="Idea, task, thing to remember…"></textarea>
+    <div class="row" style="margin-top:12px"><span class="grow"></span><button type="button" class="btn" id="inCancel">Cancel</button><button class="btn pri">Save</button></div>
+  </form>
+</dialog>
+
 <dialog id="hbDlg">
   <form method="dialog" id="hbForm">
     <b id="hbHead">New habit</b>
+    <label>Kind of habit</label>
+    <select id="hbType"><option value="ongoing">Ongoing daily habit (keeps a streak)</option><option value="period">Specific days (shows "x out of n days")</option></select>
     <label>Habit name</label><input type="text" id="hbName" required placeholder="e.g. Shloka chanting">
+    <div id="hbPer" style="display:none"><div class="two"><div><label>Starts</label><input type="date" id="hbStart"></div><div><label>Ends</label><input type="date" id="hbEnd"></div></div><div class="hint" id="hbCount" style="margin-top:4px"></div></div>
     <label>Icon</label><div class="emrow" id="hbEm"></div><input type="text" id="hbEmoji" maxlength="8" placeholder="✅">
     <label>Days it applies to</label>
     <div class="row" id="hbDays" style="gap:6px"></div>
@@ -447,6 +465,7 @@ input[type=search]:focus{outline:2px solid var(--accent)}
   <input type="file" id="file" accept="application/json" hidden>
 </dialog>
 
+<button id="fab" data-a="inboxAdd" aria-label="Quick capture">💡<span id="fabN"></span></button>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -464,7 +483,7 @@ const CATS={General:'#1f6f5c',Study:'#3b6fb6',Exam:'#b4531a',Work:'#7a4fb0',Pers
 const EMOJIS=['📚','📝','🎯','⏰','🧾','📊','💰','💼','🎥','✅','⚠️','🔥','📞','🏥','🛒','✈️','🎂','🏋️','🙏','🏠','📅','💡','📌','☕'];
 
 const KEY='planner.v1';
-function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],mocks:[],chapters:[],habits:[],hlog:{},meta:{}}}
+function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],mocks:[],chapters:[],habits:[],inbox:[],hlog:{},meta:{}}}
 function migrate(d){
   if((d.v||0)<4){
     (d.subjects||[]).forEach(s=>{if(s.kind==='recorded')s.done=s.total>0?Math.round(s.total*(Number(s.done)||0)/100*10)/10:0});
@@ -474,6 +493,7 @@ function migrate(d){
   if(!d.mocks)d.mocks=[];
   if(!d.chapters)d.chapters=[];
   if(!d.habits)d.habits=[];
+  if(!d.inbox)d.inbox=[];
   return d;
 }
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?migrate(Object.assign(fresh(),x)):fresh()}catch(e){return fresh()}}
@@ -484,7 +504,7 @@ function save(silent){if(!silent){db.meta.log=db.meta.log||{};db.meta.log[ds(new
 function touch(k){db.ts=db.ts||{};db.ts[k]=Date.now()}
 
 /* ---------- change tracking (used by sync) ---------- */
-const COLS=['events','todos','projects','subjects','mocks','chapters','habits'];
+const COLS=['events','todos','projects','subjects','mocks','chapters','habits','inbox'];
 const SIGKEY='planner.sig';
 const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h.toString(36)+s.length};
 const itemSig=it=>{const c=Object.assign({},it);delete c.u;return hash(JSON.stringify(c))};
@@ -580,10 +600,14 @@ function sessTodoHtml(x){
 }
 const agendaHtml=k=>agendaOn(k).map(x=>x.kind==='session'?sessHtml(x):evHtml(x)).join('');
 function todoHtml(t){
-  return `<div class="todo ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} data-a="tog" data-id="${t.id}"><span data-a="editTodo" data-id="${t.id}">${esc(t.text)}${t.seriesId?' 🔁':''}</span><button class="x" data-a="delTodo" data-id="${t.id}" aria-label="Delete">✕</button></div>`;
+  return `<div class="todo ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} data-a="tog" data-id="${t.id}"><span data-a="editTodo" data-id="${t.id}">${esc(t.text)}${t.seriesId?' 🔁':''}</span><button class="star ${t.top?'on':''}" data-a="star" data-id="${t.id}" aria-label="Top priority">${t.top?'⭐':'☆'}</button><button class="x" data-a="delTodo" data-id="${t.id}" aria-label="Delete">✕</button></div>`;
+}
+function top3Html(d){
+  const l=todosOn(d).filter(x=>x.top);
+  return `<div class="card sec top3"><div class="row"><b class="grow">⭐ Top 3 for the day</b><span>${l.filter(x=>x.done).length}/${l.length||0} done</span></div>`+(l.map(todoHtml).join('')||'<p class="hint" style="margin:6px 0">Pick the 3 things that matter most. Tap ☆ on any to-do, or type one below.</p>')+(l.length<3?`<input class="add" data-addtop="${d}" placeholder="+ add a top priority, press Enter">`:'')+`</div>`;
 }
 function todoBlock(d){
-  return sessionsOn(d).map(sessTodoHtml).join('')+todosOn(d).map(todoHtml).join('')+`<input class="add" data-add="${d}" placeholder="+ add to-do, press Enter">`;
+  return sessionsOn(d).map(sessTodoHtml).join('')+todosOn(d).filter(x=>!x.top).map(todoHtml).join('')+`<input class="add" data-add="${d}" placeholder="+ add to-do, press Enter">`;
 }
 function noteBox(k,ph){return `<textarea data-note="${k}" placeholder="${ph}">${esc(getNote(k))}</textarea>`}
 
@@ -604,7 +628,7 @@ function monthGrid(y,m){
     if(mode==='sched'){all=ag.map(x=>x.kind==='session'?sIc(x):chipHtml(x,'emoji'))}
     else if(mode==='todo'){all=td.map(x=>`<span data-it class="emo ${x.done?'dn':''}">${x.done?'✅':'☐'}</span>`).concat(sess.map(sIc))}
     else if(mode==='proj'){all=sess.map(sIc)}
-    else{all=ag.map(x=>x.kind==='session'?sIc(x):chipHtml(x,'emoji'));cnt=openN?`<div class="cnt">☐${openN}</div>`:''}
+    else{all=ag.map(x=>x.kind==='session'?sIc(x):chipHtml(x,'emoji'));const tn=td.filter(x=>x.top&&!x.done).length;cnt=(openN||tn)?`<div class="cnt">☐${openN}${tn?' ⭐'+tn:''}</div>`:''}
     const icons=all.join('');
     h+=`<div class="cell ${k===t?'today':''} ${k===selDay?'sel':''}" style="--h:${HUE[r%5]}" data-a="selDay" data-d="${k}"><div class="n"><span>${DOW[(d.getDay()+6)%7]} ${i+1}</span></div><div class="nar"><div class="emos">${icons}</div>${cnt}</div></div>`;
   }
@@ -677,7 +701,7 @@ function renderDay(){
   $('#title').textContent=`${DOW[(cur.getDay()+6)%7]}, ${cur.getDate()} ${MON[cur.getMonth()].slice(0,3)} ${cur.getFullYear()}`;
   const prev=ds(addDays(cur,-1));
   const carry=todosOn(prev).filter(t=>!t.done).length;
-  let h='';
+  let h=inboxHtml(k)+top3Html(k);
   const pl=projLinesForDays(k,k);
   if(pl)h+=`<div class="card" style="margin-bottom:10px">${db.projects.map(p=>{const w=projWeekOf(p,k);return w?`<div class="pline">${esc(p.emoji||'📘')} ${esc(p.name)} · Week ${w.w} of ${w.total} · Day ${w.day}</div>`:''}).join('')}</div>`;
   h+=`<div class="card"><div class="row"><b class="grow">Schedule &amp; deadlines</b><button class="btn pri" data-a="newEv" data-d="${k}">+ Add</button></div>`+
@@ -892,7 +916,7 @@ function render(){
   document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=(view==='projects'||view==='study'||view==='search')?'none':'');
   let h=view==='search'?'':deadlineBanner()+streakBanner()+backupBanner();
   h+=view==='month'?renderMonth():view==='week'?renderWeek():view==='day'?renderDay():view==='projects'?renderProjects():view==='habits'?renderHabits():view==='search'?renderSearch():renderStudy();
-  $('#app').innerHTML=h;updateStreakBtn();updateSyncBtn();layoutFit();
+  $('#app').innerHTML=h;updateStreakBtn();updateSyncBtn();updateFab();layoutFit();
 }
 
 /* ---------- repeat helpers ---------- */
@@ -1048,6 +1072,7 @@ $('#emRow').addEventListener('click',e=>{const b=e.target.closest('[data-em]');i
 $('#evEmoji').addEventListener('input',markEm);
 $('#evKind').addEventListener('change',syncKind);
 function openEv(id,date){
+  inboxFrom=null;
   editing=id?db.events.find(e=>e.id===id):null;
   $('#evHead').textContent=editing?'Edit':'New event or deadline';
   $('#evKind').value=editing?(editing.kind||'event'):'event';
@@ -1105,6 +1130,7 @@ $('#evForm').addEventListener('submit',async ev=>{
       dates.forEach(dt=>db.events.push(Object.assign({},o,{id:uid(),date:dt,seriesId:sid,done:false})));
     }else db.events.push(o);
   }
+  if(inboxFrom&&!editing){db.inbox=db.inbox.filter(z=>z.id!==inboxFrom)}inboxFrom=null;
   save();dlg.close();render();checkReminders();
 });
 
@@ -1265,34 +1291,77 @@ $('#sjForm').addEventListener('submit',ev=>{
 });
 
 
+/* ---------- inbox ---------- */
+let inboxFrom=null;
+function inboxHtml(k){
+  const l=db.inbox||[];if(!l.length)return '';
+  return `<div class="card sec inbox"><div class="row"><b class="grow">📥 Inbox · ${l.length}</b></div>`+l.map(x=>`<div class="inrow"><div class="grow">${esc(x.text)}</div><button class="btn" data-a="inTodo" data-id="${x.id}" data-d="${k}">☐ To-do</button><button class="btn" data-a="inEv" data-id="${x.id}" data-d="${k}">📅 Event</button><button class="x" data-a="inDel" data-id="${x.id}" aria-label="Delete">✕</button></div>`).join('')+`<div class="hint" style="margin-top:4px">To-do and Event put it on ${dayLabel(k)}.</div></div>`;
+}
+function updateFab(){const n=(db.inbox||[]).length,e=$('#fabN');if(e)e.textContent=n?' '+n:''}
+const indlg=$('#inDlg');
+$('#inCancel').onclick=()=>indlg.close();
+$('#inForm').addEventListener('submit',ev=>{
+  const t=$('#inText').value.trim();if(!t){ev.preventDefault();return}
+  db.inbox.push({id:uid(),text:t.slice(0,500),at:Date.now()});save();render();
+});
 /* ---------- habits ---------- */
 const HB_EM=['✅','🙏','🏋️','🚶','📖','💧','🧘','😴','🍎','✍️','🧠','☀️'];
-const hbOn=(h,d)=>(h.days||[0,1,2,3,4,5,6]).includes((d.getDay()+6)%7);
+const hbOn=(h,d)=>{
+  if(!(h.days||[0,1,2,3,4,5,6]).includes((d.getDay()+6)%7))return false;
+  if(h.type==='period'){const k=ds(d);return k>=h.start&&k<=h.end}
+  return true;
+};
 function hbStreak(h){
   const set=new Set(h.d||[]),t=today();let n=0;
   for(let i=0;i<800;i++){const d=addDays(t,-i);if(!hbOn(h,d))continue;
     if(set.has(ds(d)))n++;else if(i===0)continue;else break}
   return n;
 }
+function hbBest(h){
+  const set=new Set(h.d||[]);if(!set.size)return 0;
+  const first=[...set].sort()[0],t=today();let best=0,run=0;
+  for(let d=parse(first);ds(d)<=ds(t);d.setDate(d.getDate()+1)){
+    if(!hbOn(h,d))continue;
+    if(set.has(ds(d))){run++;best=Math.max(best,run)}else if(ds(d)!==ds(t))run=0;
+  }
+  return best;
+}
+function hbPeriod(h){
+  const t=ds(today());let n=0,el=0,dn=0;const set=new Set(h.d||[]);
+  for(let d=parse(h.start);ds(d)<=h.end;d.setDate(d.getDate()+1)){
+    if(!hbOn(h,d))continue;n++;const k=ds(d);if(k<=t)el++;if(set.has(k))dn++;
+  }
+  return{n,el,dn,left:n-el,over:t>h.end,notyet:t<h.start};
+}
+function hbCard(x,s,t){
+  const set=new Set(x.d||[]);
+  let cells='';
+  for(let i=0;i<7;i++){
+    const d=addDays(s,i),k=ds(d),on=hbOn(x,d),fut=k>t,dn=set.has(k);
+    cells+=`<div class="hbc"><small class="${k===t?'tdy':''}">${'MTWTFSS'[i]}</small><button class="hbd ${dn?'dn':''} ${k===t?'tdy':''} ${on?'':'off'}" ${(!on||fut)?'disabled':''} data-a="hTick" data-id="${x.id}" data-d="${k}" aria-label="${DOW[i]} ${d.getDate()}">${dn?'✓':d.getDate()}</button></div>`;
+  }
+  let right,foot;
+  if(x.type==='period'){
+    const q=hbPeriod(x),pc=q.n?Math.round(100*q.dn/q.n):0;
+    right=`<b>${q.dn} out of ${q.n} days</b>`;
+    foot=`<div class="hint" style="margin-top:6px">${dayLabel(x.start)} → ${dayLabel(x.end)} · ${q.notyet?'starts soon':q.over?'finished':q.left+' day'+(q.left===1?'':'s')+' left'}</div><div class="bar"><i style="width:${pc}%"></i></div>`;
+  }else{
+    right=`<span title="Current streak">🔥 ${hbStreak(x)}</span><span title="Best streak" style="margin-left:8px">🏆 ${hbBest(x)}</span>`;
+    foot='';
+  }
+  return `<div class="card sec"><div class="row" style="flex-wrap:nowrap"><span style="font-size:20px">${esc(x.emoji||'✅')}</span><b class="grow">${esc(x.name)}</b>${right}<button class="btn" data-a="editHabit" data-id="${x.id}">Edit</button></div><div class="hbrow">${cells}</div>${foot}</div>`;
+}
 function renderHabits(){
   const s=monday(cur),t=ds(today());
   $('#title').textContent=`Habits · ${s.getDate()} ${MON[s.getMonth()].slice(0,3)} – ${addDays(s,6).getDate()} ${MON[addDays(s,6).getMonth()].slice(0,3)}`;
   const hs=db.habits||[];
   let h=`<div class="row"><button class="btn pri" data-a="newHabit">+ New habit</button></div>`;
-  if(!hs.length)return h+`<div class="card sec" style="margin-top:10px"><b>Build daily habits</b><p style="color:var(--mute);margin:6px 0 0">Add things you want to do every day, like shloka, walking or revision. Tick each day as you do it and watch the 🔥 streak grow.</p></div>`;
+  if(!hs.length)return h+`<div class="card sec" style="margin-top:10px"><b>Two kinds of habits</b><p style="color:var(--mute);margin:6px 0 0"><b>Ongoing daily</b> habits just keep a 🔥 streak, like shloka or walking.<br><b>Specific days</b> habits run for a fixed period and show "12 out of 21 days".</p></div>`;
   const todayOn=hs.filter(x=>hbOn(x,today())),doneT=todayOn.filter(x=>(x.d||[]).includes(t)).length;
   h+=`<div class="card sec" style="margin-top:10px"><div class="row"><b class="grow">Today</b><span>${doneT} of ${todayOn.length} done</span></div><div class="bar"><i style="width:${todayOn.length?Math.round(100*doneT/todayOn.length):0}%"></i></div></div>`;
-  hs.forEach(x=>{
-    const set=new Set(x.d||[]),st=hbStreak(x);
-    let cells='';
-    for(let i=0;i<7;i++){
-      const d=addDays(s,i),k=ds(d),on=hbOn(x,d),fut=k>t,dn=set.has(k);
-      cells+=`<div class="hbc"><small class="${k===t?'tdy':''}">${'MTWTFSS'[i]}</small><button class="hbd ${dn?'dn':''} ${k===t?'tdy':''} ${on?'':'off'}" ${(!on||fut)?'disabled':''} data-a="hTick" data-id="${x.id}" data-d="${k}" aria-label="${DOW[i]} ${d.getDate()}">${dn?'✓':d.getDate()}</button></div>`;
-    }
-    const ms=new Date(today().getFullYear(),today().getMonth(),1);let sch=0,dn=0;
-    for(let d=new Date(ms);ds(d)<=t;d.setDate(d.getDate()+1)){if(hbOn(x,d)){sch++;if(set.has(ds(d)))dn++}}
-    h+=`<div class="card sec"><div class="row" style="flex-wrap:nowrap"><span style="font-size:20px">${esc(x.emoji||'✅')}</span><b class="grow">${esc(x.name)}</b><span title="Current streak">🔥 ${st}</span><button class="btn" data-a="editHabit" data-id="${x.id}">Edit</button></div><div class="hbrow">${cells}</div><div class="hint" style="margin-top:6px">${MON[today().getMonth()]}: ${dn} of ${sch} days · ${sch?Math.round(100*dn/sch):0}%</div><div class="bar"><i style="width:${sch?Math.round(100*dn/sch):0}%"></i></div></div>`;
-  });
+  const on=hs.filter(x=>x.type!=='period'),pe=hs.filter(x=>x.type==='period');
+  if(on.length)h+=`<div class="srg">Ongoing daily habits · streaks</div>`+on.map(x=>hbCard(x,s,t)).join('');
+  if(pe.length)h+=`<div class="srg">Specific-days habits · progress</div>`+pe.map(x=>hbCard(x,s,t)).join('');
   return h;
 }
 const hbdlg=$('#hbDlg');let hbEd=null;
@@ -1303,16 +1372,27 @@ function openHabit(id){
   $('#hbEm').innerHTML=HB_EM.map(e=>`<button type="button" class="btn" data-hbem="${e}">${e}</button>`).join('');
   const days=hbEd?hbEd.days||[0,1,2,3,4,5,6]:[0,1,2,3,4,5,6];
   $('#hbDays').innerHTML=DOW.map((n,i)=>`<label style="display:flex;gap:3px;align-items:center;margin:0"><input type="checkbox" data-hbd="${i}" ${days.includes(i)?'checked':''}>${n[0]}</label>`).join('');
+  $('#hbType').value=hbEd&&hbEd.type==='period'?'period':'ongoing';
+  $('#hbStart').value=hbEd&&hbEd.start?hbEd.start:ds(today());$('#hbEnd').value=hbEd&&hbEd.end?hbEd.end:ds(addDays(today(),20));
+  hbSync();
   $('#hbDel').style.display=hbEd?'':'none';hbdlg.showModal();
 }
+function hbSync(){
+  const per=$('#hbType').value==='period';$('#hbPer').style.display=per?'':'none';
+  if(per){const a=$('#hbStart').value,b=$('#hbEnd').value;const days=[...document.querySelectorAll('[data-hbd]')].filter(c=>c.checked).map(c=>Number(c.dataset.hbd));let n=0;if(a&&b&&a<=b)for(let d=parse(a);ds(d)<=b;d.setDate(d.getDate()+1))if(days.includes((d.getDay()+6)%7))n++;$('#hbCount').textContent=n?n+' day'+(n===1?'':'s')+' in this period':'Pick a valid period'}
+}
+['hbType','hbStart','hbEnd'].forEach(i=>$('#'+i).addEventListener('change',hbSync));
+$('#hbDays').addEventListener('change',hbSync);
 $('#hbEm').addEventListener('click',e=>{const b=e.target.closest('[data-hbem]');if(b)$('#hbEmoji').value=b.dataset.hbem});
 $('#hbCancel').onclick=()=>hbdlg.close();
 $('#hbDel').onclick=()=>{if(hbEd&&confirm('Delete this habit and its history?')){db.habits=db.habits.filter(x=>x.id!==hbEd.id);save();hbdlg.close();render()}};
 $('#hbForm').addEventListener('submit',ev=>{
   const days=[...document.querySelectorAll('[data-hbd]')].filter(c=>c.checked).map(c=>Number(c.dataset.hbd));
   if(!days.length){ev.preventDefault();alert('Pick at least one day.');return}
-  const o={name:$('#hbName').value.trim(),emoji:$('#hbEmoji').value.trim(),days};
-  if(hbEd)Object.assign(hbEd,o);else db.habits.push(Object.assign({id:uid(),d:[]},o));
+  const type=$('#hbType').value,o={name:$('#hbName').value.trim(),emoji:$('#hbEmoji').value.trim(),days,type};
+  if(type==='period'){o.start=$('#hbStart').value;o.end=$('#hbEnd').value;if(!o.start||!o.end||o.start>o.end){ev.preventDefault();alert('Choose a start date and an end date after it.');return}}
+  else{delete o.start;delete o.end}
+  if(hbEd){if(type!=='period'){delete hbEd.start;delete hbEd.end}Object.assign(hbEd,o)}else db.habits.push(Object.assign({id:uid(),d:[]},o));
   save();render();
 });
 
@@ -1353,6 +1433,7 @@ function searchResults(q){
   db.subjects.filter(x=>has(x.name)).forEach(x=>out.push({g:'Study',ic:x.emoji||'📘',t:x.name,w:'Study · paper',go:'study'}));
   (db.chapters||[]).filter(x=>has(x.name)).forEach(x=>out.push({g:'Study',ic:'📚',t:x.name,w:`Study · Syllabus · ${subName(x.subId)} · ${x.l?'📖':'⬜'}${x.r?'✍️':'⬜'}${x.p?'🧪':'⬜'}`,go:'study'}));
   (db.mocks||[]).filter(x=>has(x.name)||has(x.note)).forEach(x=>out.push({g:'Study',ic:'📝',t:(x.name||'Mock test')+(has(x.note)?' · '+srSnip(x.note,q):''),w:`Study · Mock test · ${subName(x.subId)} · ${x.marks}/${x.outOf} · ${dayLabel(x.date)}`,go:'study'}));
+  (db.inbox||[]).filter(x=>has(x.text)).forEach(x=>out.push({g:'Inbox',ic:'💡',t:x.text,w:'Quick-capture inbox · open any Day to file it',go:'day',d:ds(today())}));
   (db.habits||[]).filter(x=>has(x.name)).forEach(x=>out.push({g:'Habits',ic:x.emoji||'✅',t:x.name,w:'Habits',go:'habits'}));
   return out.slice(0,80);
 }
@@ -1455,7 +1536,7 @@ function bkInfo(){
   const lb=Math.max(db.meta.lastBackup||0,Number(localStorage.getItem('planner.lastSync'))||0)||null;
   {const c=ghCfg();$('#gRepo').value=c?c.repo:'';$('#gToken').placeholder=c?'(token saved — leave blank to keep)':'github_pat_…'}
   setStatus();
-  $('#bkInfo').textContent=`${db.events.length} events/deadlines, ${db.todos.length} to-dos, ${db.projects.length} projects, ${Object.keys(db.notes).length} notes. `+(lb?'Last backup: '+new Date(lb).toLocaleString():'No backup yet.');
+  $('#bkInfo').textContent=`${db.events.length} events/deadlines, ${db.todos.length} to-dos, ${db.projects.length} projects, ${Object.keys(db.notes).length} notes. `+(lb?'Last backup: '+new Date(lb).toLocaleString()+'. ':'No backup yet. ')+(db.meta.lastDrive?'Last copy shared to Drive/file: '+new Date(db.meta.lastDrive).toLocaleString()+'.':'No Drive copy yet. Tap "Save backup to Drive…" and choose Drive.');
 }
 $('#file').onchange=async ev=>{
   const f=ev.target.files[0];if(!f)return;
@@ -1483,6 +1564,11 @@ document.addEventListener('click',e=>{
   else if(a==='streak')openStreak();
   else if(a==='closeSt')$('#stDlg').close();
   else if(a==='closePop')$('#dlPop').close();
+  else if(a==='inboxAdd'){$('#inText').value='';indlg.showModal();setTimeout(()=>$('#inText').focus(),50)}
+  else if(a==='inDel'){db.inbox=db.inbox.filter(z=>z.id!==t.dataset.id);save();render()}
+  else if(a==='inTodo'){const x=db.inbox.find(z=>z.id===t.dataset.id);if(x){db.todos.push({id:uid(),date:t.dataset.d,text:x.text,done:false});db.inbox=db.inbox.filter(z=>z.id!==x.id);save();render()}}
+  else if(a==='inEv'){const x=db.inbox.find(z=>z.id===t.dataset.id);if(x){openEv(null,t.dataset.d);$('#evTitle').value=x.text;inboxFrom=x.id}}
+  else if(a==='star'){const x=db.todos.find(z=>z.id===t.dataset.id);if(x){if(!x.top&&db.todos.filter(z=>z.date===x.date&&z.top).length>=3){alert('Only 3 priorities per day. Un-star one first.');return}x.top=x.top?0:1;save();render()}}
   else if(a==='newHabit')openHabit(null);
   else if(a==='editHabit')openHabit(t.dataset.id);
   else if(a==='hTick'){const x=db.habits.find(z=>z.id===t.dataset.id);if(x){x.d=x.d||[];const k=t.dataset.d,i=x.d.indexOf(k);if(i<0)x.d.push(k);else x.d.splice(i,1);save();render()}}
@@ -1575,6 +1661,11 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('keydown',e=>{
+  const tp=e.target.closest&&e.target.closest('[data-addtop]');
+  if(tp&&e.key==='Enter'&&tp.value.trim()){
+    const d=tp.dataset.addtop;if(todosOn(d).filter(x=>x.top).length>=3){alert('Only 3 priorities per day.');return}
+    db.todos.push({id:uid(),date:d,text:tp.value.trim(),done:false,top:1});save();render();return;
+  }
   const i=e.target.closest&&e.target.closest('[data-add]');
   if(i&&e.key==='Enter'&&i.value.trim()){
     db.todos.push({id:uid(),date:i.dataset.add,text:i.value.trim(),done:false});save();render();
@@ -1875,7 +1966,7 @@ async function shareBackup(){
       const f=new File([text],name,{type});
       if(navigator.canShare&&navigator.canShare({files:[f]})){
         await navigator.share({files:[f],title:'Planner backup'});
-        db.meta.lastBackup=Date.now();save(true);bkInfo();render();
+        db.meta.lastBackup=Date.now();db.meta.lastDrive=Date.now();save(true);bkInfo();render();
         return;
       }
     }
