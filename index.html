@@ -200,12 +200,21 @@ dialog .repbox,dialog form{max-width:100%}
 .sylhead{border:0;font-size:15px;padding:4px 0 0}.sylhead span:not(.grow){width:20px;text-align:center}
 .chrow .x{border:0;background:none;color:var(--mute);width:22px;cursor:pointer}
 .chrow input{width:20px;height:20px;accent-color:var(--accent)}.chn{cursor:pointer;min-width:0;word-break:break-word}
+.tabs{overflow-x:auto;flex-wrap:nowrap;max-width:100%;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tabs button{flex:0 0 auto;white-space:nowrap}
+.hbrow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}.hbc{text-align:center}.hbc small{display:block;color:var(--mute);font-size:11px}.hbc small.tdy{color:var(--accent);font-weight:700}
+.hbd{width:100%;aspect-ratio:1;max-width:44px;border-radius:50%;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
+.hbd.dn{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}.hbd.tdy{border-color:var(--accent)}.hbd.off{border-style:dashed;opacity:.35}.hbd:disabled{cursor:default}.hbd:disabled:not(.off):not(.dn){opacity:.45}
+.srg{font-size:12px;font-weight:700;color:var(--mute);text-transform:uppercase;margin:12px 2px 4px}
+.srr{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:4px 0;cursor:pointer}.srr small{color:var(--mute);display:block}.sri{font-size:20px}.srr mark{background:#ffe38a;color:#000;border-radius:3px}
+.rvl{display:flex;gap:8px;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}.rvl b{text-align:right}
+input[type=search]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none}
+input[type=search]:focus{outline:2px solid var(--accent)}
 </style>
 </head>
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v13</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v14</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -217,6 +226,8 @@ dialog .repbox,dialog form{max-width:100%}
       <button data-a="view" data-v="day">Day</button>
       <button data-a="view" data-v="projects">Projects</button>
       <button data-a="view" data-v="study">Study</button>
+      <button data-a="view" data-v="habits">Habits</button>
+      <button data-a="view" data-v="search" aria-label="Search">🔍</button>
     </div>
   </div>
   <div class="row" style="margin-top:6px;flex-wrap:nowrap">
@@ -320,6 +331,17 @@ dialog .repbox,dialog form{max-width:100%}
     <label>Date you studied it</label><input type="date" id="rvDate" required>
     <label>Revise after how many days (comma separated)</label><input type="text" id="rvInt" placeholder="1,7,21">
     <div class="row" style="margin-top:14px"><span class="grow"></span><button type="button" class="btn" id="rvCancel">Cancel</button><button class="btn pri">Add</button></div>
+  </form>
+</dialog>
+
+<dialog id="hbDlg">
+  <form method="dialog" id="hbForm">
+    <b id="hbHead">New habit</b>
+    <label>Habit name</label><input type="text" id="hbName" required placeholder="e.g. Shloka chanting">
+    <label>Icon</label><div class="emrow" id="hbEm"></div><input type="text" id="hbEmoji" maxlength="8" placeholder="✅">
+    <label>Days it applies to</label>
+    <div class="row" id="hbDays" style="gap:6px"></div>
+    <div class="row" style="margin-top:14px"><button type="button" class="btn del" id="hbDel">Delete</button><span class="grow"></span><button type="button" class="btn" id="hbCancel">Cancel</button><button class="btn pri">Save</button></div>
   </form>
 </dialog>
 
@@ -442,7 +464,7 @@ const CATS={General:'#1f6f5c',Study:'#3b6fb6',Exam:'#b4531a',Work:'#7a4fb0',Pers
 const EMOJIS=['📚','📝','🎯','⏰','🧾','📊','💰','💼','🎥','✅','⚠️','🔥','📞','🏥','🛒','✈️','🎂','🏋️','🙏','🏠','📅','💡','📌','☕'];
 
 const KEY='planner.v1';
-function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],mocks:[],chapters:[],hlog:{},meta:{}}}
+function fresh(){return{v:4,events:[],todos:[],notes:{},projects:[],pw:{},subjects:[],mocks:[],chapters:[],habits:[],hlog:{},meta:{}}}
 function migrate(d){
   if((d.v||0)<4){
     (d.subjects||[]).forEach(s=>{if(s.kind==='recorded')s.done=s.total>0?Math.round(s.total*(Number(s.done)||0)/100*10)/10:0});
@@ -451,6 +473,7 @@ function migrate(d){
   if(!d.hlog)d.hlog={};
   if(!d.mocks)d.mocks=[];
   if(!d.chapters)d.chapters=[];
+  if(!d.habits)d.habits=[];
   return d;
 }
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY));return x&&x.events?migrate(Object.assign(fresh(),x)):fresh()}catch(e){return fresh()}}
@@ -461,7 +484,7 @@ function save(silent){if(!silent){db.meta.log=db.meta.log||{};db.meta.log[ds(new
 function touch(k){db.ts=db.ts||{};db.ts[k]=Date.now()}
 
 /* ---------- change tracking (used by sync) ---------- */
-const COLS=['events','todos','projects','subjects','mocks','chapters'];
+const COLS=['events','todos','projects','subjects','mocks','chapters','habits'];
 const SIGKEY='planner.sig';
 const hash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return h.toString(36)+s.length};
 const itemSig=it=>{const c=Object.assign({},it);delete c.u;return hash(JSON.stringify(c))};
@@ -486,7 +509,7 @@ const getNote=k=>db.notes[k]||'';
 const setNote=(k,v)=>{if(v)db.notes[k]=v;else delete db.notes[k];touch('n:'+k);save()};
 
 let view=localStorage.getItem('planner.view')||'month';
-if(!['month','week','day','projects','study'].includes(view))view='month';
+if(!['month','week','day','projects','study','habits','search'].includes(view))view='month';
 let cur=new Date();cur.setHours(0,0,0,0);
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 
@@ -641,7 +664,7 @@ const WH=[45,340,190,150,270,25,5];
 function renderWeek(){
   const s=monday(cur),e=addDays(s,6),t=ds(today());
   $('#title').textContent=`${s.getDate()} ${MON[s.getMonth()].slice(0,3)} – ${e.getDate()} ${MON[e.getMonth()].slice(0,3)} ${e.getFullYear()}`;
-  let h='<div class="wgrid big">'+`<div class="card plan"><h3 style="cursor:default">Week plan &amp; notes</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}${legendHtml()}</div>`;
+  let h='<div class="wgrid big">'+`<div class="card plan"><h3 style="cursor:default">Week plan &amp; notes</h3>${projLinesForDays(ds(s),ds(e))}${noteBox('w:'+ds(s),'Priorities, plan and notes for this week…')}${legendHtml()}</div>`+reviewHtml(s);
   for(let i=0;i<7;i++){
     const d=addDays(s,i),k=ds(d);
     h+=`<div class="card wd ${k===t?'today':''}" style="--h:${WH[i]}"><div class="row" style="flex-wrap:nowrap;gap:4px"><h3 class="grow" data-a="goDay" data-d="${k}">${DOW[i]} ${d.getDate()} ${MON[d.getMonth()].slice(0,3)}</h3><button class="mini" data-a="qtodo" data-d="${k}" title="Add a to-do">☐+</button><button class="mini" data-a="newEv" data-d="${k}" title="Add an event or deadline">＋</button></div>`+
@@ -866,9 +889,9 @@ window.addEventListener('resize',()=>{clearTimeout(rzT);rzT=setTimeout(()=>{cons
 function render(){
   if(!render.sc){render.sc=1;fitScale()}
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
-  document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=(view==='projects'||view==='study')?'none':'');
-  let h=deadlineBanner()+streakBanner()+backupBanner();
-  h+=view==='month'?renderMonth():view==='week'?renderWeek():view==='day'?renderDay():view==='projects'?renderProjects():renderStudy();
+  document.querySelectorAll('[data-a=prev],[data-a=next],[data-a=today]').forEach(b=>b.style.display=(view==='projects'||view==='study'||view==='search')?'none':'');
+  let h=view==='search'?'':deadlineBanner()+streakBanner()+backupBanner();
+  h+=view==='month'?renderMonth():view==='week'?renderWeek():view==='day'?renderDay():view==='projects'?renderProjects():view==='habits'?renderHabits():view==='search'?renderSearch():renderStudy();
   $('#app').innerHTML=h;updateStreakBtn();updateSyncBtn();layoutFit();
 }
 
@@ -1241,6 +1264,141 @@ $('#sjForm').addEventListener('submit',ev=>{
   save();render();
 });
 
+
+/* ---------- habits ---------- */
+const HB_EM=['✅','🙏','🏋️','🚶','📖','💧','🧘','😴','🍎','✍️','🧠','☀️'];
+const hbOn=(h,d)=>(h.days||[0,1,2,3,4,5,6]).includes((d.getDay()+6)%7);
+function hbStreak(h){
+  const set=new Set(h.d||[]),t=today();let n=0;
+  for(let i=0;i<800;i++){const d=addDays(t,-i);if(!hbOn(h,d))continue;
+    if(set.has(ds(d)))n++;else if(i===0)continue;else break}
+  return n;
+}
+function renderHabits(){
+  const s=monday(cur),t=ds(today());
+  $('#title').textContent=`Habits · ${s.getDate()} ${MON[s.getMonth()].slice(0,3)} – ${addDays(s,6).getDate()} ${MON[addDays(s,6).getMonth()].slice(0,3)}`;
+  const hs=db.habits||[];
+  let h=`<div class="row"><button class="btn pri" data-a="newHabit">+ New habit</button></div>`;
+  if(!hs.length)return h+`<div class="card sec" style="margin-top:10px"><b>Build daily habits</b><p style="color:var(--mute);margin:6px 0 0">Add things you want to do every day, like shloka, walking or revision. Tick each day as you do it and watch the 🔥 streak grow.</p></div>`;
+  const todayOn=hs.filter(x=>hbOn(x,today())),doneT=todayOn.filter(x=>(x.d||[]).includes(t)).length;
+  h+=`<div class="card sec" style="margin-top:10px"><div class="row"><b class="grow">Today</b><span>${doneT} of ${todayOn.length} done</span></div><div class="bar"><i style="width:${todayOn.length?Math.round(100*doneT/todayOn.length):0}%"></i></div></div>`;
+  hs.forEach(x=>{
+    const set=new Set(x.d||[]),st=hbStreak(x);
+    let cells='';
+    for(let i=0;i<7;i++){
+      const d=addDays(s,i),k=ds(d),on=hbOn(x,d),fut=k>t,dn=set.has(k);
+      cells+=`<div class="hbc"><small class="${k===t?'tdy':''}">${'MTWTFSS'[i]}</small><button class="hbd ${dn?'dn':''} ${k===t?'tdy':''} ${on?'':'off'}" ${(!on||fut)?'disabled':''} data-a="hTick" data-id="${x.id}" data-d="${k}" aria-label="${DOW[i]} ${d.getDate()}">${dn?'✓':d.getDate()}</button></div>`;
+    }
+    const ms=new Date(today().getFullYear(),today().getMonth(),1);let sch=0,dn=0;
+    for(let d=new Date(ms);ds(d)<=t;d.setDate(d.getDate()+1)){if(hbOn(x,d)){sch++;if(set.has(ds(d)))dn++}}
+    h+=`<div class="card sec"><div class="row" style="flex-wrap:nowrap"><span style="font-size:20px">${esc(x.emoji||'✅')}</span><b class="grow">${esc(x.name)}</b><span title="Current streak">🔥 ${st}</span><button class="btn" data-a="editHabit" data-id="${x.id}">Edit</button></div><div class="hbrow">${cells}</div><div class="hint" style="margin-top:6px">${MON[today().getMonth()]}: ${dn} of ${sch} days · ${sch?Math.round(100*dn/sch):0}%</div><div class="bar"><i style="width:${sch?Math.round(100*dn/sch):0}%"></i></div></div>`;
+  });
+  return h;
+}
+const hbdlg=$('#hbDlg');let hbEd=null;
+function openHabit(id){
+  hbEd=id?db.habits.find(x=>x.id===id):null;
+  $('#hbHead').textContent=hbEd?'Edit habit':'New habit';
+  $('#hbName').value=hbEd?hbEd.name:'';$('#hbEmoji').value=hbEd?hbEd.emoji||'':'✅';
+  $('#hbEm').innerHTML=HB_EM.map(e=>`<button type="button" class="btn" data-hbem="${e}">${e}</button>`).join('');
+  const days=hbEd?hbEd.days||[0,1,2,3,4,5,6]:[0,1,2,3,4,5,6];
+  $('#hbDays').innerHTML=DOW.map((n,i)=>`<label style="display:flex;gap:3px;align-items:center;margin:0"><input type="checkbox" data-hbd="${i}" ${days.includes(i)?'checked':''}>${n[0]}</label>`).join('');
+  $('#hbDel').style.display=hbEd?'':'none';hbdlg.showModal();
+}
+$('#hbEm').addEventListener('click',e=>{const b=e.target.closest('[data-hbem]');if(b)$('#hbEmoji').value=b.dataset.hbem});
+$('#hbCancel').onclick=()=>hbdlg.close();
+$('#hbDel').onclick=()=>{if(hbEd&&confirm('Delete this habit and its history?')){db.habits=db.habits.filter(x=>x.id!==hbEd.id);save();hbdlg.close();render()}};
+$('#hbForm').addEventListener('submit',ev=>{
+  const days=[...document.querySelectorAll('[data-hbd]')].filter(c=>c.checked).map(c=>Number(c.dataset.hbd));
+  if(!days.length){ev.preventDefault();alert('Pick at least one day.');return}
+  const o={name:$('#hbName').value.trim(),emoji:$('#hbEmoji').value.trim(),days};
+  if(hbEd)Object.assign(hbEd,o);else db.habits.push(Object.assign({id:uid(),d:[]},o));
+  save();render();
+});
+
+/* ---------- search ---------- */
+let srQ='';
+const srEsc=(t,q)=>{const e=esc(t),i=t.toLowerCase().indexOf(q);if(i<0||!q)return e;return esc(t.slice(0,i))+'<mark>'+esc(t.slice(i,i+q.length))+'</mark>'+esc(t.slice(i+q.length))};
+const srSnip=(t,q)=>{const i=t.toLowerCase().indexOf(q);let a=Math.max(0,i-30),b=Math.min(t.length,i+q.length+60);return(a?'…':'')+t.slice(a,b).replace(/\s+/g,' ')+(b<t.length?'…':'')};
+function searchResults(q){
+  q=q.trim().toLowerCase();if(!q)return[];
+  const has=t=>(t||'').toLowerCase().includes(q),out=[],tk=ds(today());
+  const subName=id=>{const s=db.subjects.find(x=>x.id===id);return s?(s.emoji||'📘')+' '+s.name:'(deleted paper)'};
+  function grouped(list,fn){
+    const seen={};
+    list.forEach(x=>{
+      if(x.seriesId){(seen[x.seriesId]=seen[x.seriesId]||[]).push(x);return}
+      fn(x,null);
+    });
+    Object.values(seen).forEach(g=>{
+      g.sort((a,b)=>a.date<b.date?-1:1);
+      const up=g.find(x=>x.date>=tk)||g[g.length-1];
+      fn(up,g);
+    });
+  }
+  grouped(db.events.filter(e=>has(e.title)||has(e.emoji)),(e,g)=>out.push({g:e.kind==='deadline'?'Deadlines':'Events',ic:e.emoji||(e.kind==='deadline'?'⏰':'📅'),t:e.title||'(untitled)',w:(g?`Repeats · ${g.length} days, ${dayLabel(g[0].date)} → ${dayLabel(g[g.length-1].date)} · next/nearest ${dayLabel(e.date)}`:`${dayLabel(e.date)} ${parse(e.date).getFullYear()}${e.start?' · '+e.start:''}`)+` · under Schedule & deadlines · ${e.cat}`,go:'day',d:e.date}));
+  grouped(db.todos.filter(x=>has(x.text)),(x,g)=>out.push({g:'To-dos',ic:x.done?'✅':'☐',t:x.text,w:(g?`Repeats · ${g.length} days, ${dayLabel(g[0].date)} → ${dayLabel(g[g.length-1].date)} · nearest ${dayLabel(x.date)}`:`${dayLabel(x.date)} ${parse(x.date).getFullYear()}`)+' · under To-do',go:'day',d:x.date}));
+  Object.keys(db.notes||{}).forEach(k=>{
+    const v=db.notes[k];if(!has(v))return;
+    let w,go='day',d=null;
+    if(k.startsWith('d:')){d=k.slice(2);w=`Day notes · ${dayLabel(d)} ${parse(d).getFullYear()}`}
+    else if(k.startsWith('w:')){d=k.slice(2);go='week';w=`Week plan & notes · week of ${dayLabel(d)}`}
+    else if(k.startsWith('m:')){d=k.slice(2)+'-01';go='month';w=`Month goals & notes · ${MON[parse(d).getMonth()]} ${parse(d).getFullYear()}`}
+    else if(k.startsWith('p:')){const [pid,wk]=k.slice(2).split(':'),pr=db.projects.find(x=>x.id===pid);go='projects';w=`Project notes · ${pr?pr.name:'project'} · Week ${wk}`}
+    else if(/^rv[123]:/.test(k)){d=k.slice(4);go='week';w=`Weekly review notes · week of ${dayLabel(d)}`}
+    else return;
+    out.push({g:'Notes',ic:'📝',t:srSnip(v,q),w,go,d});
+  });
+  db.projects.filter(p=>has(p.name)).forEach(p=>out.push({g:'Projects',ic:p.emoji||'📘',t:p.name,w:`Project · ${dayLabel(p.start)} ${parse(p.start).getFullYear()}`,go:'projects'}));
+  db.subjects.filter(x=>has(x.name)).forEach(x=>out.push({g:'Study',ic:x.emoji||'📘',t:x.name,w:'Study · paper',go:'study'}));
+  (db.chapters||[]).filter(x=>has(x.name)).forEach(x=>out.push({g:'Study',ic:'📚',t:x.name,w:`Study · Syllabus · ${subName(x.subId)} · ${x.l?'📖':'⬜'}${x.r?'✍️':'⬜'}${x.p?'🧪':'⬜'}`,go:'study'}));
+  (db.mocks||[]).filter(x=>has(x.name)||has(x.note)).forEach(x=>out.push({g:'Study',ic:'📝',t:(x.name||'Mock test')+(has(x.note)?' · '+srSnip(x.note,q):''),w:`Study · Mock test · ${subName(x.subId)} · ${x.marks}/${x.outOf} · ${dayLabel(x.date)}`,go:'study'}));
+  (db.habits||[]).filter(x=>has(x.name)).forEach(x=>out.push({g:'Habits',ic:x.emoji||'✅',t:x.name,w:'Habits',go:'habits'}));
+  return out.slice(0,80);
+}
+function srHtml(q){
+  q=q.trim().toLowerCase();
+  if(!q)return `<p class="hint" style="margin:10px 2px">Type a word. It looks through events, deadlines, to-dos, notes, projects, papers, chapters, mock tests and habits, and shows where each one lives. Tap a result to go there.</p>`;
+  const r=searchResults(q);if(!r.length)return `<p class="hint" style="margin:10px 2px">Nothing found for "${esc(q)}".</p>`;
+  const groups=[...new Set(r.map(x=>x.g))];let h='';
+  groups.forEach(g=>{h+=`<div class="srg">${g}</div>`;r.filter(x=>x.g===g).forEach(x=>{
+    const i=r.indexOf(x);h+=`<div class="srr" data-a="srGo" data-i="${i}"><span class="sri">${esc(x.ic)}</span><div class="grow"><div>${srEsc(x.t,q)}</div><small>${esc(x.w)}</small></div><span>›</span></div>`})});
+  return h;
+}
+let srLast=[];
+function renderSearch(){
+  $('#title').textContent='Search';
+  setTimeout(()=>{const i=$('#srIn');if(i&&!srQ)i.focus()},50);
+  return `<input id="srIn" type="search" placeholder="Search everything…" value="${esc(srQ)}" autocomplete="off" style="width:100%"><div id="srRes">${srHtml(srQ)}</div>`;
+}
+document.addEventListener('input',e=>{if(e.target.id==='srIn'){srQ=e.target.value;$('#srRes').innerHTML=srHtml(srQ);srLast=searchResults(srQ)}});
+function srGo(i){
+  const x=searchResults(srQ)[i];if(!x)return;
+  view=x.go;if(x.d)cur=parse(x.d);
+  localStorage.setItem('planner.view',view);render();window.scrollTo(0,0);
+}
+
+/* ---------- weekly review ---------- */
+function reviewHtml(s){
+  const e=addDays(s,6),a=ds(s),b=ds(e),t=ds(today()),open=localStorage.getItem('planner.rv')==='1';
+  const inW=d=>d>=a&&d<=b;
+  const evs=db.events.filter(x=>inW(x.date)&&x.kind!=='deadline').length,dls=db.events.filter(x=>inW(x.date)&&x.kind==='deadline'),
+        dlDone=dls.filter(x=>x.done).length,tds=db.todos.filter(x=>inW(x.date)),tdDone=tds.filter(x=>x.done).length;
+  let sT=0,sD=0,hrs=0;const per={};
+  for(let i=0;i<7;i++){const k=ds(addDays(s,i));sessionsOn(k).forEach(x=>{sT++;if(x.done)sD++});const hl=db.hlog[k]||{};Object.keys(hl).forEach(id=>{hrs+=Number(hl[id])||0;per[id]=(per[id]||0)+(Number(hl[id])||0)})}
+  const mk=(db.mocks||[]).filter(x=>inW(x.date));
+  let hp=0,hd=0;(db.habits||[]).forEach(x=>{for(let i=0;i<7;i++){const d=addDays(s,i);if(ds(d)<=t&&hbOn(x,d)){hp++;if((x.d||[]).includes(ds(d)))hd++}}});
+  const carry=db.todos.filter(x=>inW(x.date)&&!x.done&&!x.seriesId&&x.date<t).length;
+  let h=`<div class="card sec"><div class="row wkhead" data-a="togRv"><span class="chev">${open?'▾':'▸'}</span><b class="grow">📋 Weekly review</b><small style="color:var(--mute)">${tds.length?tdDone+'/'+tds.length+' to-dos · ':''}${Math.round(hrs*10)/10} h studied</small></div>`;
+  if(open){
+    const line=(ic,l,v)=>`<div class="rvl"><span>${ic} ${l}</span><b>${v}</b></div>`;
+    h+=line('📅','Events','' +evs)+line('⏰','Deadlines done',dls.length?dlDone+' of '+dls.length:'none')+line('☐','To-dos done',tds.length?tdDone+' of '+tds.length:'none')+line('📘','Project sessions done',sT?sD+' of '+sT:'none')+line('⏱️','Study hours logged',(Math.round(hrs*10)/10)+' h'+(Object.keys(per).length?' ('+Object.keys(per).map(id=>{const sj=db.subjects.find(x=>x.id===id);return (sj?sj.name:'paper')+' '+(Math.round(per[id]*10)/10)}).join(', ')+')':''))+line('📝','Mock tests',mk.length?mk.map(x=>{const sj=db.subjects.find(y=>y.id===x.subId);return (sj?sj.name:'')+' '+mkPct(x)+'%'}).join(', '):'none')+line('🔥','Habits ticked',hp?hd+' of '+hp:'no habits');
+    h+=`<label>What went well</label>${noteBox('rv1:'+a,'Wins this week…')}<label>What slipped, and why</label>${noteBox('rv2:'+a,'Missed items and reasons…')}<label>Plan for next week</label>${noteBox('rv3:'+a,'Top priorities for next week…')}`;
+    h+=`<div class="row" style="margin-top:8px"><button class="btn" data-a="carryOver" data-d="${a}" ${carry?'':'disabled'}>Move ${carry} unfinished to-do${carry===1?'':'s'} to next Monday</button></div>`;
+  }
+  return h+`</div>`;
+}
+
 /* ---------- syllabus / chapters ---------- */
 const chdlg=$('#chpDlg');let chSub=null;
 $('#chpCancel').onclick=()=>chdlg.close();
@@ -1282,7 +1440,7 @@ $('#mkForm').addEventListener('submit',ev=>{
 /* ---------- navigation, backup ---------- */
 function go(n){
   if(view==='month')cur=new Date(cur.getFullYear(),cur.getMonth()+n,1);
-  else cur=addDays(cur,n*(view==='week'?7:1));
+  else cur=addDays(cur,n*(view==='week'||view==='habits'?7:1));
   render();
 }
 function exportData(){
@@ -1325,6 +1483,12 @@ document.addEventListener('click',e=>{
   else if(a==='streak')openStreak();
   else if(a==='closeSt')$('#stDlg').close();
   else if(a==='closePop')$('#dlPop').close();
+  else if(a==='newHabit')openHabit(null);
+  else if(a==='editHabit')openHabit(t.dataset.id);
+  else if(a==='hTick'){const x=db.habits.find(z=>z.id===t.dataset.id);if(x){x.d=x.d||[];const k=t.dataset.d,i=x.d.indexOf(k);if(i<0)x.d.push(k);else x.d.splice(i,1);save();render()}}
+  else if(a==='srGo')srGo(Number(t.dataset.i));
+  else if(a==='togRv'){localStorage.setItem('planner.rv',localStorage.getItem('planner.rv')==='1'?'0':'1');render()}
+  else if(a==='carryOver'){const s0=parse(t.dataset.d),b=ds(addDays(s0,6)),tk=ds(today()),nm=ds(addDays(s0,7)),l=db.todos.filter(x=>x.date>=t.dataset.d&&x.date<=b&&!x.done&&!x.seriesId&&x.date<tk);if(l.length&&confirm('Move '+l.length+' unfinished to-do(s) to '+dayLabel(nm)+'?')){l.forEach(x=>x.date=nm);save();render()}}
   else if(a==='togSy'){const o=syOpen();o[t.dataset.id]=o[t.dataset.id]?0:1;localStorage.setItem('planner.sy',JSON.stringify(o));render()}
   else if(a==='addCh')openChapters(t.dataset.id);
   else if(a==='chTick'){const x=db.chapters.find(z=>z.id===t.dataset.id);if(x){x[t.dataset.f]=t.checked?1:0;save();render()}}
