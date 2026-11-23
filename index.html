@@ -216,12 +216,16 @@ input[type=search]:focus{outline:2px solid var(--accent)}
 body:not(.nos) #app{padding-bottom:56px}
 #fab span{font-size:13px;font-weight:700}
 .dpanel .dbody{padding-bottom:44px}
+.stgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stt{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer;min-width:0}
+.stt b{font-size:13px;text-align:center;word-break:break-word}.stt small{color:var(--mute);font-size:11px}.stt .bar{width:80%}
+.stI{font-size:34px;line-height:1}.stt.sp{background:var(--bg);border-style:dashed}
 </style>
 </head>
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v16</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v17</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -805,15 +809,34 @@ function remHours(s){return(s.kind==='recorded'&&s.total>0)?Math.max(0,s.total-(
 const SY_F=[['l','📖','Lectures'],['r','✍️','Revised'],['p','🧪','Practised']];
 const syOpen=()=>{try{return JSON.parse(localStorage.getItem('planner.sy')||'{}')}catch(e){return{}}};
 function chProg(sub){const c=(db.chapters||[]).filter(x=>x.subId===sub.id);const n=c.length,full=c.filter(x=>x.l&&x.r&&x.p).length;const pts=c.reduce((a,x)=>a+(x.l?1:0)+(x.r?1:0)+(x.p?1:0),0);return{n,full,pct:n?Math.round(100*pts/(3*n)):0,c}}
-function syllabusHtml(sub){
-  const g=chProg(sub),open=syOpen()[sub.id];
-  let h=`<div class="syl"><div class="row wkhead" data-a="togSy" data-id="${sub.id}"><span class="chev">${open?'▾':'▸'}</span><b class="grow">📚 Syllabus</b><small style="color:var(--mute)">${g.n?`${g.full}/${g.n} chapters complete · ${g.pct}%`:'not added yet'}</small></div>`;
+function syllabusHtml(sub,force){
+  const g=chProg(sub),open=force||syOpen()[sub.id];
+  let h=`<div class="syl"><div class="row wkhead" ${force?'':`data-a="togSy" data-id="${sub.id}"`}>${force?'':`<span class="chev">${open?'▾':'▸'}</span>`}<b class="grow">📚 Syllabus</b><small style="color:var(--mute)">${g.n?`${g.full}/${g.n} chapters complete · ${g.pct}%`:'not added yet'}</small></div>`;
   if(open){
     if(g.n)h+=`<div class="bar"><i style="width:${g.pct}%"></i></div><div class="sylhead"><span class="grow"></span>${SY_F.map(f=>`<span title="${f[2]}">${f[1]}</span>`).join('')}<span style="width:22px"></span></div>`;
     g.c.forEach(x=>{h+=`<div class="chrow"><span class="grow chn" data-a="renCh" data-id="${x.id}">${esc(x.name)}</span>${SY_F.map(f=>`<input type="checkbox" ${x[f[0]]?'checked':''} data-a="chTick" data-id="${x.id}" data-f="${f[0]}" aria-label="${f[2]}">`).join('')}<button class="x" data-a="delCh" data-id="${x.id}" aria-label="Delete chapter">✕</button></div>`});
     h+=`<div class="row" style="margin-top:6px"><button class="btn" data-a="addCh" data-id="${sub.id}">+ Add chapters</button>${g.n?`<button class="btn" data-a="allCh" data-id="${sub.id}">Tick all lectures</button>`:''}</div><div style="font-size:11px;color:var(--mute);margin-top:4px">📖 lectures done · ✍️ revised · 🧪 practised (questions/mocks). Tap a chapter name to rename it.</div>`;
   }
   return h+`</div>`;
+}
+function studyScreen(st,subs,hd,cards,avg){
+  const back=ttl=>`<div class="row" style="margin-bottom:8px"><button class="btn" data-a="stBack">‹ Study</button><b class="grow" style="text-align:center">${ttl}</b></div>`;
+  const mockN=(db.mocks||[]).length;
+  if(st==='ov'){$('#title').textContent='Study · Overview';return back('📊 Overview')+hd}
+  if(st==='ins'){$('#title').textContent='Study · Insights';return back('🎯 Insights')+insightsCard(subs)}
+  if(st==='mk'){$('#title').textContent='Study · Mock tests';return back('📝 Mock tests')+mockCard(subs)}
+  const sj=subs.find(x=>x.id===st);
+  if(sj&&cards[sj.id]){$('#title').textContent=sj.name;return back(esc((sj.emoji||'📘')+' '+sj.name))+cards[sj.id]}
+  const t=ds(today());
+  let h=`<div class="stgrid">`;
+  subs.forEach(x=>{const p=pct(x);h+=`<button class="stt" data-a="stOpen" data-id="${x.id}"><span class="stI">${esc(x.emoji||'📘')}</span><b>${esc(x.name)}</b><div class="bar"><i style="width:${p}%"></i></div><small>${p}%${x.kind==='live'?' · live':''}</small></button>`});
+  h+=`<button class="stt sp" data-a="newSub"><span class="stI">➕</span><b>Add paper</b></button>`;
+  h+=`<button class="stt sp" data-a="stOpen" data-id="ov"><span class="stI">📊</span><b>Overview</b><small>${avg}% overall</small></button>`;
+  h+=`<button class="stt sp" data-a="stOpen" data-id="ins"><span class="stI">🎯</span><b>Insights</b><small>pace · focus</small></button>`;
+  h+=`<button class="stt sp" data-a="stOpen" data-id="mk"><span class="stI">📝</span><b>Mock tests</b><small>${mockN} logged</small></button>`;
+  h+=`</div>`;
+  if(!subs.length)h+=`<div class="row" style="margin-top:10px"><button class="btn" data-a="add12">Add 12 papers (rename later)</button></div>`;
+  return h;
 }
 function insightsCard(subs){
   if(!subs.length)return '';
@@ -860,9 +883,9 @@ function insightsCard(subs){
   return h+`</div>`;
 }
 const mkPct=m=>m.outOf>0?Math.round(1000*m.marks/m.outOf)/10:0;
-function mockCard(subs){
-  const ms=(db.mocks||[]).slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
-  let h=`<div class="card sec"><div class="row"><b class="grow">📝 Mock tests</b><button class="btn pri" data-a="newMock">+ Add mock</button></div>`;
+function mockCard(subs,only){
+  const ms=(db.mocks||[]).filter(m=>!only||m.subId===only).slice().sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
+  let h=`<div class="card sec"><div class="row"><b class="grow">📝 Mock tests</b><button class="btn pri" data-a="newMock" data-id="${only||''}">+ Add mock</button></div>`;
   if(!ms.length)return h+`<p style="color:var(--mute);margin:8px 0 0">Log each mock test you attempt. You'll see your latest, best and average per paper, and whether you are improving.</p></div>`;
   const by={};ms.forEach(m=>(by[m.subId]=by[m.subId]||[]).push(m));
   h+=`<div class="mkt">`;
@@ -878,6 +901,7 @@ function mockCard(subs){
   return h+`</div>`;
 }
 function renderStudy(){
+  const st=localStorage.getItem('planner.ss')||'';
   $('#title').textContent='Study tracker';
   const t=ds(today()),start=db.meta.studyStart||'2026-11-25',ex=db.meta.examDate||'';
   const d0=daysBetween(t,start);
@@ -891,26 +915,28 @@ function renderStudy(){
   const target=Number(db.meta.target)||6;
   let bars='';
   for(let i=6;i>=0;i--){const dd=addDays(today(),-i),v=hsum(ds(dd));bars+=`<div class="wb"><div class="wbar" style="height:${Math.min(100,Math.round(100*v/target))}%"></div><small>${fmtN(v)}</small><small>${DOW[(dd.getDay()+6)%7][0]}</small></div>`}
-  let h=`<div class="card"><div class="two"><div><label>Studies start</label><input type="date" data-meta="studyStart" value="${esc(start)}"></div><div><label>Exams start (optional)</label><input type="date" data-meta="examDate" value="${esc(ex)}"></div></div>`+
+  let hd=`<div class="card"><div class="two"><div><label>Studies start</label><input type="date" data-meta="studyStart" value="${esc(start)}"></div><div><label>Exams start (optional)</label><input type="date" data-meta="examDate" value="${esc(ex)}"></div></div>`+
     `<p style="margin:10px 0 2px"><b>${startTxt}</b>${exLeft!==null?` · <b>${exLeft>0?exLeft+' days to exams':exLeft===0?'Exams start today':'Exams have started'}</b>`:''}</p>`+
     `<div class="bar"><i style="width:${avg}%"></i></div><div>Overall progress: <b>${avg}%</b> across ${subs.length} paper(s)</div>`+
     `<div style="margin-top:10px"><div class="row"><b>Study hours today: ${fmtN(hsum(t))} / ${fmtN(target)}</b><span class="grow"></span><span style="font-size:13px">Daily target <input type="number" class="hin" min="0.5" step="0.5" data-meta="target" value="${target}" style="width:64px"></span></div><div class="bar"><i style="width:${Math.min(100,Math.round(100*hsum(t)/target))}%"></i></div><div class="wbars">${bars}</div><div style="font-size:12px;color:var(--mute);margin-top:4px">Last 7 days, today on the right · ${fmtN(wk7)} hrs in total</div></div>`+(remH>0?`<div style="color:var(--mute);font-size:13px">Recorded lectures left: about ${remH.toFixed(1)} hrs${exLeft>0?`, so about ${(remH/exLeft).toFixed(1)} hrs/day to finish before exams`:''}</div>`:'')+`</div>`;
-  h+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="logStudy">+ Log study time</button><button class="btn" data-a="newRev">🧠 Add revision</button><button class="btn" data-a="newSub">+ Add paper</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
-  h+=insightsCard(subs)+mockCard(subs);
+  hd+=`<div class="row" style="margin-top:10px"><button class="btn pri" data-a="logStudy">+ Log study time</button><button class="btn" data-a="newRev">🧠 Add revision</button>${subs.length?'':'<button class="btn" data-a="add12">Add 12 papers (rename later)</button>'}</div>`;
+  const cards={};
   subs.forEach(s=>{
     const p=pct(s),live=s.kind==='live';
     const target=s.exam||ex,left=target?daysBetween(t,target):null,rh=remHours(s);
-    h+=`<div class="card sec"><div class="row"><b class="grow">${esc(s.emoji||'📘')} ${esc(s.name)}</b><small style="color:var(--mute)">${live?'Live':'Recorded'}</small><button class="btn" data-a="editSub" data-id="${s.id}">Edit</button></div>`+
+    let c=`<div class="card sec"><div class="row"><b class="grow">${esc(s.emoji||'📘')} ${esc(s.name)}</b><small style="color:var(--mute)">${live?'Live':'Recorded'}</small><button class="btn" data-a="editSub" data-id="${s.id}">Edit</button></div>`+
       `<div class="bar"><i style="width:${p}%"></i></div>`+
       `<div class="row"><span><b>${p}%</b> · ${fmtN(s.done)}/${s.total||'?'} ${live?'days':'hrs'}</span><span class="grow"></span>${live?`<button class="btn" data-a="subStep" data-id="${s.id}" data-d="-1">−1 day</button><button class="btn pri" data-a="subStep" data-id="${s.id}" data-d="1">+1 day</button>`:`<input type="number" class="hin" min="0" step="0.25" placeholder="hrs" data-hin="${s.id}"><button class="btn pri" data-a="addHrs" data-id="${s.id}">+ Add hrs</button>`}</div>`+
       `<div style="color:var(--mute);font-size:13px;margin-top:4px">`+
       (!live&&!(s.total>0)?'Tap Edit and enter the total lecture hours to see % progress. ':'')+(live&&s.total>0?`${Math.max(0,s.total-s.done)} live day(s) left. `:'')+
       (rh>0?`${rh.toFixed(1)} hrs left${left>0?`, about ${(rh/left).toFixed(1)} hrs/day`:''}. `:'')+
       (target?(left>0?`Paper in ${left} day(s) (${fmtShort(parse(target))}).`:left===0?'Paper is today.':'Paper date passed.'):'')+
-      `</div>`+syllabusHtml(s)+`</div>`;
+      `</div>`+syllabusHtml(s,true)+`</div>`;
+    cards[s.id]=c+mockCard(subs,s.id);
   });
-  return h;
+  return studyScreen(st,subs,hd,cards,avg);
 }
+
 function backupBanner(){
   const lb=Math.max(db.meta.lastBackup||0,Number(localStorage.getItem('planner.lastSync'))||0)||null;
   const days=lb?Math.floor((Date.now()-lb)/864e5):null;
@@ -1626,7 +1652,9 @@ document.addEventListener('click',e=>{
   else if(a==='renCh'){const x=db.chapters.find(z=>z.id===t.dataset.id);if(!x)return;const n=prompt('Chapter name',x.name);if(n&&n.trim()){x.name=n.trim().slice(0,120);save();render()}}
   else if(a==='delCh'){const x=db.chapters.find(z=>z.id===t.dataset.id);if(x&&confirm('Delete this chapter?')){db.chapters=db.chapters.filter(z=>z.id!==x.id);save();render()}}
   else if(a==='allCh'){db.chapters.forEach(x=>{if(x.subId===t.dataset.id)x.l=1});save();render()}
-  else if(a==='newMock')openMock(null);
+  else if(a==='newMock'){openMock(null);if(t.dataset.id&&db.subjects.some(z=>z.id===t.dataset.id))$('#mkSub').value=t.dataset.id}
+  else if(a==='stOpen'){localStorage.setItem('planner.ss',t.dataset.id);render();window.scrollTo(0,0)}
+  else if(a==='stBack'){localStorage.setItem('planner.ss','');render();window.scrollTo(0,0)}
   else if(a==='editMock')openMock(t.dataset.id);
   else if(a==='newSub')openSub(null);
   else if(a==='editSub')openSub(t.dataset.id);
