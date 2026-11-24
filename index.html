@@ -220,12 +220,15 @@ body:not(.nos) #app{padding-bottom:56px}
 .stt{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer;min-width:0}
 .stt b{font-size:13px;text-align:center;word-break:break-word}.stt small{color:var(--mute);font-size:11px}.stt .bar{width:80%}
 .stI{font-size:34px;line-height:1}.stt.sp{background:var(--bg);border-style:dashed}
+/* soft pastel schedule rows */
+.ev{background:color-mix(in srgb,var(--c) 17%,var(--card));border-color:color-mix(in srgb,var(--c) 38%,var(--line))}
+.wgrid.big .card.wd .ev{background:color-mix(in srgb,var(--c) 17%,var(--card))}
 </style>
 </head>
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v18</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v20</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -349,8 +352,9 @@ body:not(.nos) #app{padding-bottom:56px}
   <form method="dialog" id="inForm">
     <b>💡 Quick capture</b>
     <p style="font-size:12px;color:var(--mute);margin:4px 0">Jot it down now. Decide the day later from the Inbox card at the top of a Day.</p>
-    <textarea id="inText" rows="4" style="width:100%" placeholder="Idea, task, thing to remember…"></textarea>
-    <div class="row" style="margin-top:12px"><span class="grow"></span><button type="button" class="btn" id="inCancel">Cancel</button><button class="btn pri">Save</button></div>
+    <textarea id="inText" rows="3" style="width:100%" placeholder="Idea, task, thing to remember…"></textarea>
+    <div class="row" style="margin-top:12px"><span class="grow"></span><button type="button" class="btn" id="inCancel">Close</button><button class="btn pri">Save</button></div>
+    <div id="inList"></div>
   </form>
 </dialog>
 
@@ -446,6 +450,7 @@ body:not(.nos) #app{padding-bottom:56px}
   <div class="row" style="margin-top:8px">
     <button class="btn" data-a="shareBackup">Save backup to Drive…</button>
   </div>
+
   <div class="row" style="margin-top:8px">
     <button class="btn" data-a="notif">Enable reminders</button>
   </div>
@@ -842,15 +847,14 @@ function insightsCard(subs){
   if(!subs.length)return '';
   const t=ds(today()),target=Number(db.meta.target)||6,gEx=db.meta.examDate||'';
   const hrs=n=>(Math.round(n*10)/10);
-  let h=`<div class="card sec"><b>🎯 Study insights</b>`;
-  // 1. countdown
+  const open=(()=>{try{return JSON.parse(localStorage.getItem('planner.in')||'{}')}catch(e){return{}}})();
+  const menu=(id,title,sum,body)=>`<div class="card sec"><div class="row wkhead" data-a="togIn" data-id="${id}"><span class="chev">${open[id]?'▾':'▸'}</span><b class="grow">${title}</b><small style="color:var(--mute)">${sum}</small></div>${open[id]?`<div style="margin-top:6px">${body}</div>`:''}</div>`;
+  // ---- exam countdown
   const ex=subs.map(x=>({x,d:x.exam||gEx})).filter(o=>o.d).map(o=>({x:o.x,d:o.d,n:daysBetween(t,o.d)})).sort((a,b)=>a.n-b.n);
-  if(!ex.length)h+=`<div class="srg" style="margin-top:8px">Exam countdown</div><div style="font-size:13px;color:#c0392b">No exam date yet, so pace cannot be worked out.</div><label>Exams start</label><input type="date" data-meta="examDate" value="">`;
-  else{
-    h+=`<div class="srg" style="margin-top:8px">Exam countdown</div>`;
-    ex.slice(0,6).forEach(o=>{h+=`<div class="rvl"><span>${esc((o.x.emoji||'📘')+' '+o.x.name)}</span><b>${o.n>0?o.n+' days':o.n===0?'today':'done'} · ${dayLabel(o.d)}</b></div>`});
-  }
-  // 2. pace + today's split
+  let cdBody,cdSum;
+  if(!ex.length){cdSum='no exam date';cdBody=`<div style="font-size:13px;color:#c0392b">No exam date yet, so pace cannot be worked out.</div><label>Exams start</label><input type="date" data-meta="examDate" value="">`}
+  else{cdSum=ex[0].n>0?'first in '+ex[0].n+' days':'exams on';cdBody=ex.map(o=>`<div class="rvl"><span>${esc((o.x.emoji||'📘')+' '+o.x.name)}</span><b>${o.n>0?o.n+' days':o.n===0?'today':'done'} · ${dayLabel(o.d)}</b></div>`).join('')}
+  // ---- pace
   const need=[];let liveLeft=0;
   subs.forEach(x=>{
     const d=x.exam||gEx,dl=d?Math.max(1,daysBetween(t,d)):0;
@@ -859,34 +863,28 @@ function insightsCard(subs){
     if(left>0&&dl>0)need.push({x,left,perDay:left/dl,dl});
   });
   const noTot=subs.filter(x=>x.kind!=='live'&&!(x.total>0)),noDate=subs.filter(x=>x.kind!=='live'&&x.total>0&&!(x.exam||gEx));
-  if(noTot.length||noDate.length){
-    h+=`<div class="srg" style="margin-top:10px">Needed for pace</div>`;
-    if(noTot.length)h+=`<div style="font-size:13px;margin:4px 0">❗ Total lecture hours missing for: <b>${noTot.map(x=>esc(x.name)).join(', ')}</b>. Open the paper, tap <b>Edit</b>, enter the total hours.</div>`;
-    if(noDate.length)h+=`<div style="font-size:13px;margin:4px 0">❗ No exam date for: <b>${noDate.map(x=>esc(x.name)).join(', ')}</b>. Set <b>Exams start</b> in Overview or an exam date on the paper.</div>`;
-  }
+  let pBody='',pSum='needs setup';
+  if(noTot.length)pBody+=`<div style="font-size:13px;margin:4px 0">❗ Total lecture hours missing for: <b>${noTot.map(x=>esc(x.name)).join(', ')}</b>. Open the paper, tap <b>Edit</b>, enter the total hours.</div>`;
+  if(noDate.length)pBody+=`<div style="font-size:13px;margin:4px 0">❗ No exam date for: <b>${noDate.map(x=>esc(x.name)).join(', ')}</b>. Set <b>Exams start</b> in Overview or an exam date on the paper.</div>`;
   if(need.length){
-    const tot=need.reduce((a,o)=>a+o.perDay,0);
-    h+=`<div class="srg" style="margin-top:10px">Pace needed (recorded lectures)</div>`;
-    h+=`<div class="rvl"><span>Hours per day to finish before exams</span><b>${hrs(tot)} h</b></div>`;
-    h+=`<div style="font-size:13px;margin:4px 0;color:${tot<=target?'#2e8b57':'#c0392b'}">${tot<=target?'✅ Within your '+target+' h/day target.':'⚠️ Above your '+target+' h/day target. Raise the target or cover some lectures faster.'}</div>`;
-    const top=need.slice().sort((a,b)=>b.perDay-a.perDay).slice(0,4);
-    h+=`<div class="srg" style="margin-top:10px">Suggested for today (${hrs(target)} h)</div>`;
-    top.forEach(o=>{h+=`<div class="rvl"><span>${esc((o.x.emoji||'📘')+' '+o.x.name)}</span><b>${hrs(Math.max(0.5,target*o.perDay/tot))} h</b></div>`});
-    h+=`<div class="hint">Share of your daily target in proportion to how much each paper still needs.</div>`;
-  }else if(!noTot.length&&!noDate.length&&!liveLeft)h+=`<p class="hint" style="margin:8px 0 0">All recorded lectures are finished, so no pace is needed.</p>`;
-  if(liveLeft)h+=`<div class="hint" style="margin-top:6px">Live classes left: about ${liveLeft} day(s) across live papers.</div>`;
-  // 3. weak / next chapters
-  const ch=db.chapters||[],name=id=>{const s=subs.find(z=>z.id===id);return s?(s.emoji||'📘')+' '+s.name:''};
-  const rev=ch.filter(c=>c.l&&!c.r),prac=ch.filter(c=>c.r&&!c.p),todo=ch.filter(c=>!c.l);
-  const lowMock=subs.filter(x=>{const m=(db.mocks||[]).filter(z=>z.subId===x.id).sort((a,b)=>a.date<b.date?1:-1)[0];return m&&mkPct(m)<50});
-  if(rev.length||prac.length||lowMock.length||todo.length){
-    h+=`<div class="srg" style="margin-top:10px">Focus next</div>`;
-    if(lowMock.length)h+=`<div class="rvl"><span>❗ Latest mock below 50%</span><b>${lowMock.map(x=>esc(x.name)).join(', ')}</b></div>`;
-    const list=(ic,l,arr)=>{if(arr.length)h+=`<div style="margin:6px 0 2px;font-size:13px"><b>${ic} ${l} (${arr.length})</b></div>`+arr.slice(0,5).map(c=>`<div class="rvl"><span>${esc(c.name)}</span><small>${esc(name(c.subId))}</small></div>`).join('')+(arr.length>5?`<div class="hint">+${arr.length-5} more</div>`:'')};
-    list('✍️','Lectures done, not revised yet',rev);list('🧪','Revised, not practised yet',prac);
-    if(!rev.length&&!prac.length&&todo.length)h+=`<div class="hint">${todo.length} chapter(s) still need their lectures.</div>`;
-  }
-  return h+`</div>`;
+    const tot=need.reduce((a,o)=>a+o.perDay,0);pSum=hrs(tot)+' h/day';
+    pBody+=`<div class="rvl"><span>Hours per day to finish before exams</span><b>${hrs(tot)} h</b></div><div style="font-size:13px;margin:4px 0;color:${tot<=target?'#2e8b57':'#c0392b'}">${tot<=target?'✅ Within your '+target+' h/day target.':'⚠️ Above your '+target+' h/day target. Raise the target or cover some lectures faster.'}</div><div class="srg" style="margin-top:10px">Suggested for today (${hrs(target)} h)</div>`;
+    need.slice().sort((a,b)=>b.perDay-a.perDay).forEach(o=>{pBody+=`<div class="rvl"><span>${esc((o.x.emoji||'📘')+' '+o.x.name)}</span><b>${hrs(Math.max(0.5,target*o.perDay/tot))} h</b></div>`});
+    pBody+=`<div class="hint">Share of your daily target in proportion to how much each paper still needs.</div>`;
+  }else if(!noTot.length&&!noDate.length&&!liveLeft){pSum='all done';pBody+=`<p class="hint">All recorded lectures are finished, so no pace is needed.</p>`}
+  if(liveLeft)pBody+=`<div class="hint" style="margin-top:6px">Live classes left: about ${liveLeft} day(s) across live papers.</div>`;
+  // ---- focus next, paper-wise, full lists
+  const ch=db.chapters||[];let fBody='',fN=0;
+  subs.forEach(x=>{
+    const c=ch.filter(z=>z.subId===x.id);
+    const m=(db.mocks||[]).filter(z=>z.subId===x.id).sort((a,b)=>a.date<b.date?1:-1)[0];
+    const low=m&&mkPct(m)<50,todo=c.filter(z=>!z.l),rev=c.filter(z=>z.l&&!z.r),prac=c.filter(z=>z.r&&!z.p);
+    const n=todo.length+rev.length+prac.length+(low?1:0);if(!n)return;fN+=n;
+    const grp=(ic,l,arr)=>arr.length?`<div style="margin:6px 0 2px;font-size:13px"><b>${ic} ${l} (${arr.length})</b></div>`+arr.map(z=>`<div class="rvl"><span>${esc(z.name)}</span></div>`).join(''):'';
+    fBody+=`<div class="srg" style="margin-top:10px">${esc((x.emoji||'📘')+' '+x.name)}</div>`+(low?`<div class="rvl"><span>❗ Latest mock below 50%</span><b>${mkPct(m)}%</b></div>`:'')+grp('📖','Lectures still to do',todo)+grp('✍️','Lectures done, not revised yet',rev)+grp('🧪','Revised, not practised yet',prac);
+  });
+  if(!fN)fBody=`<p class="hint">${ch.length?'Nothing pending. Every chapter you added is complete.':'Add chapters under each paper\'s Syllabus to build this list.'}</p>`;
+  return menu('cd','⏳ Exam countdown',cdSum,cdBody)+menu('pc','⚡ Pace needed',pSum,pBody)+menu('fn','🎯 Focus next',fN?fN+' item'+(fN===1?'':'s'):'nothing pending',fBody);
 }
 const mkPct=m=>m.outOf>0?Math.round(1000*m.marks/m.outOf)/10:0;
 function mockCard(subs,only){
@@ -1374,7 +1372,7 @@ function inboxHtml(k){
   const l=db.inbox||[];if(!l.length)return '';
   return `<div class="card sec inbox"><div class="row"><b class="grow">📥 Inbox · ${l.length}</b></div>`+l.map(x=>`<div class="inrow"><div class="grow">${esc(x.text)}</div><button class="btn" data-a="inTodo" data-id="${x.id}" data-d="${k}">☐ To-do</button><button class="btn" data-a="inEv" data-id="${x.id}" data-d="${k}">📅 Event</button><button class="x" data-a="inDel" data-id="${x.id}" aria-label="Delete">✕</button></div>`).join('')+`<div class="hint" style="margin-top:4px">To-do and Event put it on ${dayLabel(k)}.</div></div>`;
 }
-function updateFab(){const n=(db.inbox||[]).length,e=$('#fabN');if(e)e.textContent=n?' '+n:''}
+function updateFab(){const n=(db.inbox||[]).length,e=$('#fabN');if(e)e.textContent=n?' '+n:'';const l=$('#inList');if(l)l.innerHTML=n?`<div class="srg" style="margin-top:12px">Saved in Inbox · ${n}</div>`+db.inbox.slice().reverse().map(x=>`<div class="inrow"><div class="grow">${esc(x.text)}</div><button type="button" class="btn" data-a="inTodo" data-id="${x.id}" data-d="${ds(today())}">☐ Today</button><button type="button" class="x" data-a="inDel" data-id="${x.id}" aria-label="Delete">✕</button></div>`).join('')+'<div class="hint">☐ Today makes it a to-do for today. Open any Day for the Event option.</div>':'<div class="hint" style="margin-top:10px">Inbox is empty.</div>'}
 const indlg=$('#inDlg');
 $('#inCancel').onclick=()=>indlg.close();
 $('#inForm').addEventListener('submit',ev=>{
@@ -1646,6 +1644,7 @@ document.addEventListener('click',e=>{
   else if(a==='inTodo'){const x=db.inbox.find(z=>z.id===t.dataset.id);if(x){db.todos.push({id:uid(),date:t.dataset.d,text:x.text,done:false});db.inbox=db.inbox.filter(z=>z.id!==x.id);save();render()}}
   else if(a==='inEv'){const x=db.inbox.find(z=>z.id===t.dataset.id);if(x){openEv(null,t.dataset.d);$('#evTitle').value=x.text;inboxFrom=x.id}}
   else if(a==='star'){const x=db.todos.find(z=>z.id===t.dataset.id);if(x){if(!x.top&&db.todos.filter(z=>z.date===x.date&&z.top).length>=3){alert('Only 3 priorities per day. Un-star one first.');return}x.top=x.top?0:1;save();render()}}
+  else if(a==='togIn'){let o={};try{o=JSON.parse(localStorage.getItem('planner.in')||'{}')}catch(e){}o[t.dataset.id]=o[t.dataset.id]?0:1;localStorage.setItem('planner.in',JSON.stringify(o));render()}
   else if(a==='newHabit')openHabit(null);
   else if(a==='editHabit')openHabit(t.dataset.id);
   else if(a==='hTick'){const x=db.habits.find(z=>z.id===t.dataset.id);if(x){x.d=x.d||[];const k=t.dataset.d,i=x.d.indexOf(k);if(i<0)x.d.push(k);else x.d.splice(i,1);save();render()}}
