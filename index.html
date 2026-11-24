@@ -231,7 +231,7 @@ body:not(.nos) #app{padding-bottom:56px}
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v21</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v22</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -719,7 +719,7 @@ function renderDay(){
   if(pl)h+=`<div class="card" style="margin-bottom:10px">${db.projects.map(p=>{const w=projWeekOf(p,k);return w?`<div class="pline">${esc(p.emoji||'📘')} ${esc(p.name)} · Week ${w.w} of ${w.total} · Day ${w.day}</div>`:''}).join('')}</div>`;
   h+=`<div class="card"><div class="row"><b class="grow">Schedule &amp; deadlines</b><button class="btn pri" data-a="newEv" data-d="${k}">+ Add</button></div>`+
     (agendaHtml(k)||'<p style="color:var(--mute)">Nothing scheduled.</p>')+legendHtml()+`</div>`;
-  h+=`<div class="card sec"><div class="row"><b class="grow">To-do</b><button class="btn" data-a="newRepTodo" data-d="${k}">🔁 Repeating to-do</button><button class="btn" data-a="newRev" data-d="${k}">🧠 Revision</button>${carry?`<button class="btn" data-a="carry">Carry over ${carry} from yesterday</button>`:''}</div>${todoBlock(k)}</div>`;
+  h+=`<div class="card sec"><div class="row"><b class="grow">To-do</b><button class="btn pri" data-a="newTodo" data-d="${k}">＋ Add</button><button class="btn" data-a="newRepTodo" data-d="${k}">🔁 Repeating</button><button class="btn" data-a="newRev" data-d="${k}">🧠 Revision</button>${carry?`<button class="btn" data-a="carry">Carry over ${carry} from yesterday</button>`:''}</div>${todoBlock(k)}</div>`;
   h+=`<div class="sec"><h2>Day notes</h2>${noteBox('d:'+k,'Notes, study log, thoughts for today…')}</div>`;
   return h;
 }
@@ -1224,15 +1224,15 @@ $('#evForm').addEventListener('submit',async ev=>{
 
 /* ---------- to-do dialog (new repeating, or edit) ---------- */
 const tdlg=$('#tdDlg');let tdEditing=null;
-function openTodo(id,date){
+function openTodo(id,date,one){
   tdEditing=id?db.todos.find(t=>t.id===id):null;
-  $('#tdHead').textContent=tdEditing?'Edit to-do':'New repeating to-do';
+  $('#tdHead').textContent=tdEditing?'Edit to-do':one?'New to-do':'New repeating to-do';
   $('#tdText').value=tdEditing?tdEditing.text:'';
   $('#tdDate').value=tdEditing?tdEditing.date:date;
   $('#tdDel').style.display=tdEditing?'':'none';
   resetRep('td');
   $('#tdRepBox').style.display=tdEditing?'none':'';setupExt('td',tdEditing,db.todos);
-  if(!tdEditing){$('#tdFreq').value='daily';syncRep('td')}
+  if(!tdEditing){$('#tdFreq').value=one?'none':'daily';syncRep('td')}
   tdlg.showModal();
 }
 $('#tdCancel').onclick=()=>tdlg.close();
@@ -1742,6 +1742,7 @@ document.addEventListener('click',e=>{
     }else{db.todos=db.todos.filter(z=>z.id!==x.id);save();render()}
   }
   else if(a==='editTodo')openTodo(t.dataset.id);
+  else if(a==='newTodo')openTodo(null,t.dataset.d,1);
   else if(a==='newRepTodo')openTodo(null,t.dataset.d);
   else if(a==='carry'){const p=ds(addDays(cur,-1)),k=ds(cur);db.todos.forEach(z=>{if(z.date===p&&!z.done)z.date=k});save();render()}
   else if(a==='menu'){bkInfo();$('#bkDlg').showModal()}
