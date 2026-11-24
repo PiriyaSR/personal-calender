@@ -54,6 +54,8 @@ main{padding:12px;max-width:1200px;margin:0 auto}
 .todo.done span{text-decoration:line-through;color:var(--mute)}
 .todo input{margin-top:3px;width:18px;height:18px;accent-color:var(--accent);flex:none}
 .todo .x{margin-left:auto;border:0;background:none;color:var(--mute);cursor:pointer}
+.fntiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;margin-top:6px}.fntile{position:relative;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 4px 6px;font:inherit;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:2px}.fntile.on{outline:2px solid #4f7cff;background:color-mix(in srgb,#4f7cff 12%,var(--card))}.fntile .fe{font-size:24px}.fntile .fnm{font-size:11px;line-height:1.2;text-align:center;max-height:2.4em;overflow:hidden}.fntile .fb{position:absolute;top:3px;right:5px;font-size:11px;font-weight:700;background:#c0392b;color:#fff;border-radius:9px;padding:0 6px}.fntile.ok .fb{background:#2e8b57}
+.addrow{display:flex;gap:4px;align-items:center;margin-top:4px}.addrow .add{margin-top:0;flex:1;min-width:0;width:auto}.addbtn{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:6px 10px;font:inherit;color:var(--ink);white-space:nowrap}
 .add{width:100%;border:1px dashed var(--line);background:none;border-radius:6px;padding:6px;margin-top:4px;color:var(--ink);font:inherit}
 textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;padding:8px;resize:vertical}
 .sec{margin-top:14px}
@@ -160,7 +162,8 @@ html:has(body.nos){overflow:hidden}body.nos{overflow:hidden}html.scaled body{max
 .mgrid.fit .cell .emos{gap:1px 2px;font-size:15px;line-height:1.15}
 .mgrid.fit .cell .cnt{font-size:10px;color:var(--mute)}
 .dpanel{margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;overflow:hidden}
-.dpanel .dbody{overflow:auto;flex:1;min-height:0;margin-top:4px}
+.dpanel .dbody{overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;margin-top:4px;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+html:has(body.nos),body.nos{overscroll-behavior:none;touch-action:manipulation}
 .dpanel .grow{font-size:14px;cursor:pointer}
 .dpanel .ev{font-size:13px;padding:5px 8px;margin:3px 0}
 html.scaled .seg .lg{display:none}html.scaled .seg .sm{display:inline}html.scaled .seg{flex-wrap:nowrap}html.scaled .seg button{padding:6px 10px}html.scaled #title{font-size:14px}html.scaled .tabs button{padding:6px 7px;font-size:13px}
@@ -228,7 +231,7 @@ body:not(.nos) #app{padding-bottom:56px}
 <body>
 <header>
   <div class="row" style="flex-wrap:nowrap">
-    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v20</small></h1>
+    <h1 class="grow" style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Planner <small style="font-weight:400;opacity:.55;font-size:11px">v21</small></h1>
     <button class="btn" id="syncBtn" data-a="syncDot" aria-label="Sync status"><i class="sdot"></i><span id="syncTxt">Off</span></button>
     <button class="btn" id="streakBtn" data-a="streak">🔥 0</button>
     <button class="btn" data-a="menu">Backup</button>
@@ -614,10 +617,10 @@ function todoHtml(t){
 }
 function top3Html(d){
   const l=todosOn(d).filter(x=>x.top);
-  return `<div class="card sec top3"><div class="row"><b class="grow">⭐ Top 3 for the day</b><span>${l.filter(x=>x.done).length}/${l.length||0} done</span></div>`+(l.map(todoHtml).join('')||'<p class="hint" style="margin:6px 0">Pick the 3 things that matter most. Tap ☆ on any to-do, or type one below.</p>')+(l.length<3?`<input class="add" data-addtop="${d}" placeholder="+ add a top priority, press Enter">`:'')+`</div>`;
+  return `<div class="card sec top3"><div class="row"><b class="grow">⭐ Top 3 for the day</b><span>${l.filter(x=>x.done).length}/${l.length||0} done</span></div>`+(l.map(todoHtml).join('')||'<p class="hint" style="margin:6px 0">Pick the 3 things that matter most. Tap ☆ on any to-do, or type one below.</p>')+(l.length<3?`<div class="addrow"><input class="add" data-addtop="${d}" enterkeyhint="done" placeholder="+ add a top priority"><button class="addbtn" data-a="addGo" aria-label="Add priority">＋ Add</button></div>`:'')+`</div>`;
 }
 function todoBlock(d){
-  return sessionsOn(d).map(sessTodoHtml).join('')+todosOn(d).filter(x=>!x.top).map(todoHtml).join('')+`<input class="add" data-add="${d}" placeholder="+ add to-do, press Enter">`;
+  return sessionsOn(d).map(sessTodoHtml).join('')+todosOn(d).filter(x=>!x.top).map(todoHtml).join('')+`<div class="addrow"><input class="add" data-add="${d}" enterkeyhint="done" placeholder="+ add to-do"><button class="addbtn" data-a="addGo" aria-label="Add to-do">＋ Add</button></div>`;
 }
 function noteBox(k,ph){return `<textarea data-note="${k}" placeholder="${ph}">${esc(getNote(k))}</textarea>`}
 
@@ -874,16 +877,26 @@ function insightsCard(subs){
   }else if(!noTot.length&&!noDate.length&&!liveLeft){pSum='all done';pBody+=`<p class="hint">All recorded lectures are finished, so no pace is needed.</p>`}
   if(liveLeft)pBody+=`<div class="hint" style="margin-top:6px">Live classes left: about ${liveLeft} day(s) across live papers.</div>`;
   // ---- focus next, paper-wise, full lists
-  const ch=db.chapters||[];let fBody='',fN=0;
+  const ch=db.chapters||[];let fN=0;const fs=[];
+  let fsel='';try{fsel=localStorage.getItem('planner.fnSub')||''}catch(e){}
   subs.forEach(x=>{
     const c=ch.filter(z=>z.subId===x.id);
     const m=(db.mocks||[]).filter(z=>z.subId===x.id).sort((a,b)=>a.date<b.date?1:-1)[0];
     const low=m&&mkPct(m)<50,todo=c.filter(z=>!z.l),rev=c.filter(z=>z.l&&!z.r),prac=c.filter(z=>z.r&&!z.p);
-    const n=todo.length+rev.length+prac.length+(low?1:0);if(!n)return;fN+=n;
-    const grp=(ic,l,arr)=>arr.length?`<div style="margin:6px 0 2px;font-size:13px"><b>${ic} ${l} (${arr.length})</b></div>`+arr.map(z=>`<div class="rvl"><span>${esc(z.name)}</span></div>`).join(''):'';
-    fBody+=`<div class="srg" style="margin-top:10px">${esc((x.emoji||'📘')+' '+x.name)}</div>`+(low?`<div class="rvl"><span>❗ Latest mock below 50%</span><b>${mkPct(m)}%</b></div>`:'')+grp('📖','Lectures still to do',todo)+grp('✍️','Lectures done, not revised yet',rev)+grp('🧪','Revised, not practised yet',prac);
+    const n=todo.length+rev.length+prac.length+(low?1:0);fN+=n;
+    fs.push({x,m,low,todo,rev,prac,n});
   });
-  if(!fN)fBody=`<p class="hint">${ch.length?'Nothing pending. Every chapter you added is complete.':'Add chapters under each paper\'s Syllabus to build this list.'}</p>`;
+  let fBody='';
+  if(!ch.length&&!fN)fBody=`<p class="hint">Add chapters under each paper's Syllabus to build this list.</p>`;
+  else{
+    fBody=`<div class="fntiles">`+fs.map(o=>`<button class="fntile ${fsel===o.x.id?'on':''} ${o.n?'':'ok'}" data-a="fnSub" data-id="${o.x.id}"><span class="fe">${esc(o.x.emoji||'📘')}</span><span class="fnm">${esc(o.x.name)}</span><span class="fb">${o.n?o.n:'✓'}</span></button>`).join('')+`</div>`;
+    const o=fs.find(z=>z.x.id===fsel);
+    if(!o)fBody+=`<p class="hint">Tap a subject to see what to focus on next.</p>`;
+    else{
+      const grp=(ic,l,arr)=>arr.length?`<div style="margin:6px 0 2px;font-size:13px"><b>${ic} ${l} (${arr.length})</b></div>`+arr.map(z=>`<div class="rvl"><span>${esc(z.name)}</span></div>`).join(''):'';
+      fBody+=`<div class="srg" style="margin-top:10px">${esc((o.x.emoji||'📘')+' '+o.x.name)}</div>`+(o.n?(o.low?`<div class="rvl"><span>❗ Latest mock below 50%</span><b>${mkPct(o.m)}%</b></div>`:'')+grp('📖','Lectures still to do',o.todo)+grp('✍️','Lectures done, not revised yet',o.rev)+grp('🧪','Revised, not practised yet',o.prac):`<p class="hint">${ch.some(z=>z.subId===o.x.id)?'Nothing pending here. Every chapter is complete.':'No chapters yet. Add them under this paper\'s Syllabus.'}</p>`);
+    }
+  }
   return menu('cd','⏳ Exam countdown',cdSum,cdBody)+menu('pc','⚡ Pace needed',pSum,pBody)+menu('fn','🎯 Focus next',fN?fN+' item'+(fN===1?'':'s'):'nothing pending',fBody);
 }
 const mkPct=m=>m.outOf>0?Math.round(1000*m.marks/m.outOf)/10:0;
@@ -1644,6 +1657,7 @@ document.addEventListener('click',e=>{
   else if(a==='inTodo'){const x=db.inbox.find(z=>z.id===t.dataset.id);if(x){db.todos.push({id:uid(),date:t.dataset.d,text:x.text,done:false});db.inbox=db.inbox.filter(z=>z.id!==x.id);save();render()}}
   else if(a==='inEv'){const x=db.inbox.find(z=>z.id===t.dataset.id);if(x){openEv(null,t.dataset.d);$('#evTitle').value=x.text;inboxFrom=x.id}}
   else if(a==='star'){const x=db.todos.find(z=>z.id===t.dataset.id);if(x){if(!x.top&&db.todos.filter(z=>z.date===x.date&&z.top).length>=3){alert('Only 3 priorities per day. Un-star one first.');return}x.top=x.top?0:1;save();render()}}
+  else if(a==='fnSub'){try{const k=localStorage.getItem('planner.fnSub')===t.dataset.id?'':t.dataset.id;localStorage.setItem('planner.fnSub',k)}catch(e){}render()}
   else if(a==='togIn'){let o={};try{o=JSON.parse(localStorage.getItem('planner.in')||'{}')}catch(e){}o[t.dataset.id]=o[t.dataset.id]?0:1;localStorage.setItem('planner.in',JSON.stringify(o));render()}
   else if(a==='newHabit')openHabit(null);
   else if(a==='editHabit')openHabit(t.dataset.id);
@@ -1714,6 +1728,7 @@ document.addEventListener('click',e=>{
   else if(a==='newProj')openProj(null);
   else if(a==='editProj')openProj(t.dataset.id);
   else if(a==='pwDone'){if(t.checked)db.pw[t.dataset.key]=true;else delete db.pw[t.dataset.key];touch('w:'+t.dataset.key);save()}
+  else if(a==='addGo'){const inp=t.parentElement.querySelector('input');inp&&(commitAdd(inp)||inp.focus())}
   else if(a==='tog'){const x=db.todos.find(z=>z.id===t.dataset.id);x.done=t.checked;save();render()}
   else if(a==='delTodo'){
     const x=db.todos.find(z=>z.id===t.dataset.id);if(!x)return;
@@ -1738,17 +1753,23 @@ document.addEventListener('click',e=>{
     else Notification.requestPermission().then(p=>{alert(p==='granted'?'Reminders on. They fire when you open the app; the deadline list at the top of the app always shows what is due in 3 days.':'Permission not granted.');checkReminders()});
   }
 });
+function commitAdd(inp){
+  const v=inp.value.trim();if(!v)return false;
+  const top=inp.dataset.addtop!==undefined,d=top?inp.dataset.addtop:inp.dataset.add;
+  if(top&&todosOn(d).filter(x=>x.top).length>=3){alert('Only 3 priorities per day.');return false}
+  inp.value='';
+  const t={id:uid(),date:d,text:v,done:false};if(top)t.top=1;
+  db.todos.push(t);save();render();
+  const n=document.querySelector(top?`[data-addtop="${d}"]`:`[data-add="${d}"]`);n&&n.focus();
+  return true;
+}
 document.addEventListener('keydown',e=>{
-  const tp=e.target.closest&&e.target.closest('[data-addtop]');
-  if(tp&&e.key==='Enter'&&tp.value.trim()){
-    const d=tp.dataset.addtop;if(todosOn(d).filter(x=>x.top).length>=3){alert('Only 3 priorities per day.');return}
-    db.todos.push({id:uid(),date:d,text:tp.value.trim(),done:false,top:1});save();render();return;
-  }
-  const i=e.target.closest&&e.target.closest('[data-add]');
-  if(i&&e.key==='Enter'&&i.value.trim()){
-    db.todos.push({id:uid(),date:i.dataset.add,text:i.value.trim(),done:false});save();render();
-    const n=document.querySelector(`[data-add="${i.dataset.add}"]`);n&&n.focus();
-  }
+  const i=e.target.closest&&e.target.closest('[data-add],[data-addtop]');
+  if(i&&(e.key==='Enter'||e.keyCode===13)){e.preventDefault();commitAdd(i)}
+});
+document.addEventListener('change',e=>{
+  const i=e.target.closest&&e.target.closest('[data-add],[data-addtop]');
+  if(i&&i.value.trim())commitAdd(i);
 });
 document.addEventListener('change',e=>{
   const ti=e.target.closest&&e.target.closest('[data-sess],[data-pat]');
@@ -1762,6 +1783,7 @@ document.addEventListener('change',e=>{
     save();return;
   }
   const i=e.target.closest&&e.target.closest('[data-meta]');if(i){db.meta[i.dataset.meta]=i.value;touch('m:'+i.dataset.meta);save(true);render()}});
+window.addEventListener('scroll',()=>{if(document.body.classList.contains('nos')&&(window.scrollY||window.scrollX))window.scrollTo(0,0)},{passive:true});
 let nt;
 document.addEventListener('input',e=>{
   const n=e.target.closest&&e.target.closest('[data-note]');
